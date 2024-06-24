@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[1]:
 
 
 import streamlit as st
@@ -18,7 +18,7 @@ def get_futures_data(ticker_symbol, start_date, end_date):
     ticker_df = ticker_data.history(period='1d', start=start_date, end=end_date)
     return ticker_df
 
-# Define the functions for the Altman Z Score section
+# Altman Z-Score Calculation Functions
 def ratio_x_1(ticker):
     df = ticker.balance_sheet
     working_capital = df.loc['Current Assets'].iloc[0] - df.loc['Current Liabilities'].iloc[0]
@@ -55,7 +55,7 @@ def z_score(ticker):
         ratio_3 = ratio_x_3(ticker)
         ratio_4 = ratio_x_4(ticker)
         ratio_5 = ratio_x_5(ticker)
-        zscore = 1.2 * ratio_1 + 1.4 * ratio_2 + 3.3 * ratio_3 + 0.6 * ratio_x_4 + 1.0 * ratio_5
+        zscore = 1.2 * ratio_1 + 1.4 * ratio_2 + 3.3 * ratio_3 + 0.6 * ratio_4 + 1.0 * ratio_5
         return zscore
     except Exception as e:
         return np.nan
@@ -161,18 +161,18 @@ if option == 'Altman Z Score':
     
     # Dictionary to hold scores for each symbol
     symbol_to_score = {}
-    
+
     # Calculate Z-Scores
     if st.button('Calculate Z-Scores'):
         for symbol in tickers:
             ticker = yf.Ticker(symbol)
             symbol_to_score[symbol] = z_score(ticker)
-    
+
         # Categorize
         distress = [''] * len(tickers)
         grey = [''] * len(tickers)
         safe = [''] * len(tickers)
-    
+
         for idx, symbol in enumerate(tickers):
             zscore = symbol_to_score[symbol]
             if zscore <= 1.8:
@@ -181,50 +181,50 @@ if option == 'Altman Z Score':
                 grey[idx] = zscore
             else:
                 safe[idx] = zscore
-    
+
         # Create DataFrame
         data_dict = {'Symbol': tickers, 'Distress Zone': distress, 'Grey Zone': grey, 'Safe Zone': safe}
         df = pd.DataFrame.from_dict(data_dict)
-    
+
         # Apply styles
         def highlight_distress(val):
             return 'background-color: indianred' if val != '' else ""
-    
+
         def highlight_grey(val):
             return 'background-color: grey' if val != '' else ""
-    
+
         def highlight_safe(val):
             return 'background-color: green' if val != '' else ""
-    
+
         def format_score(val):
             try:
                 return '{:.2f}'.format(float(val))
             except:
                 return ''
-    
+
         def make_pretty(styler):
             # No index
             styler.hide(axis='index')
             
             # Column formatting
             styler.format(format_score, subset=['Distress Zone', 'Grey Zone', 'Safe Zone'])
-    
+
             # Left text alignment for some columns
             styler.set_properties(subset=['Symbol', 'Distress Zone', 'Grey Zone', 'Safe Zone'], **{'text-align': 'center', 'width': '100px'})
-    
+
             # Apply highlight methods to columns
             styler.applymap(highlight_grey, subset=['Grey Zone'])
             styler.applymap(highlight_safe, subset=['Safe Zone'])
             styler.applymap(highlight_distress, subset=['Distress Zone'])
             return styler
-    
+
         # Apply styles to DataFrame
         styles = [
             dict(selector='td', props=[('font-size', '10pt'), ('border-style', 'solid'), ('border-width', '1px')]),
             dict(selector='th.col_heading', props=[('font-size', '11pt'), ('text-align', 'center')]),
             dict(selector='caption', props=[('text-align', 'center'), ('font-size', '14pt'), ('font-weight', 'bold')])
         ]
-    
+
         df_styled = df.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
         st.dataframe(df_styled)
 
