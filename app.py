@@ -1,13 +1,15 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[3]:
+# In[4]:
 
 
 import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import json
+from io import BytesIO
 
 # Function to get futures data
 def get_futures_data(ticker_symbol, start_date, end_date):
@@ -57,9 +59,112 @@ def z_score(ticker):
     except Exception as e:
         return np.nan
 
+# JSON Conversion Functionality
+def json_conversion():
+    st.title("JSON Conversion")
+    uploaded_file = st.file_uploader("Choose a JSON file", type="json", key='json_uploader')
+    if uploaded_file is not None:
+        try:
+            # Read the uploaded file as a string
+            file_contents = uploaded_file.read().decode('utf-8')
+            # Load the JSON data
+            data = json.loads(file_contents)
+            # Display file size for debugging
+            st.text(f"File size: {len(file_contents)} bytes")
+            tables = []
+            for block in data['Blocks']:
+                if block['BlockType'] == 'TABLE':
+                    table = {}
+                    if 'Relationships' in block:
+                        for relationship in block['Relationships']:
+                            if relationship['Type'] == 'CHILD':
+                                for cell_id in relationship['Ids']:
+                                    cell_block = next((b for b in data['Blocks'] if b['Id'] == cell_id), None)
+                                    if cell_block:
+                                        row_index = cell_block.get('RowIndex', 0)
+                                        col_index = cell_block.get('ColumnIndex', 0)
+                                        if row_index not in table:
+                                            table[row_index] = {}
+                                        cell_text = ''
+                                        if 'Relationships' in cell_block:
+                                            for rel in cell_block['Relationships']:
+                                                if rel['Type'] == 'CHILD':
+                                                    for word_id in rel['Ids']:
+                                                        word_block = next((w for w in data['Blocks'] if w['Id'] == word_id), None)
+                                                        if word_block and word_block['BlockType'] == 'WORD':
+                                                            cell_text += ' ' + word_block.get('Text', '')
+                                        table[row_index][col_index] = cell_text.strip()
+                    table_df = pd.DataFrame.from_dict(table, orient='index').sort_index()
+                    table_df = table_df.sort_index(axis=1)
+                    tables.append(table_df)
+            all_tables = pd.concat(tables, axis=0, ignore_index=True)
+            if len(all_tables.columns) == 0:
+                st.error("No columns found in the uploaded JSON file.")
+                return
+
+            st.subheader("Data Preview")
+            st.dataframe(all_tables)
+
+            st.subheader("Select numerical columns")
+            numerical_columns = []
+            for col in all_tables.columns:
+                if st.checkbox(f"Numerical column '{col}'", value=False, key=f"num_{col}"):
+                    numerical_columns.append(col)
+
+            st.subheader("Label Units")
+            selected_columns = st.multiselect("Select columns for conversion", options=numerical_columns, key="columns_selection")
+            selected_value = st.radio("Select conversion value", ["Actuals", "Thousands", "Millions", "Billions"], index=0, key="conversion_value")
+
+            conversion_factors = {
+                "Actuals": 1,
+                "Thousands": 1000,
+                "Millions": 1000000,
+                "Billions": 1000000000
+            }
+
+            def clean_numeric_value(value):
+                value_str = str(value).strip()
+                if value_str.startswith('(') and value_str.endswith(')'):
+                    value_str = '-' + value_str[1:-1]
+                cleaned_value = re.sub(r'[$,]', '', value_str)
+                try:
+                    return float(cleaned_value)
+                except ValueError:
+                    return 0
+
+            def apply_unit_conversion(df, columns, factor):
+                for selected_column in columns:
+                    if selected_column in df.columns:
+                        df[selected_column] = df[selected_column].apply(
+                            lambda x: x * factor if isinstance(x, (int, float)) else x)
+                return df
+
+            if st.button("Convert and Download Excel", key="convert_download"):
+                for col in numerical_columns:
+                    if col in all_tables.columns:
+                        all_tables[col] = all_tables[col].apply(clean_numeric_value)
+
+                if selected_value != "Actuals":
+                    all_tables = apply_unit_conversion(all_tables, selected_columns, conversion_factors[selected_value])
+
+                def to_excel(df):
+                    output = BytesIO()
+                    writer = pd.ExcelWriter(output, engine='xlsxwriter')
+                    df.to_excel(writer, index=False, sheet_name='Sheet1')
+                    writer.close()
+                    processed_data = output.getvalue()
+                    return processed_data
+
+                excel_data = to_excel(all_tables)
+                st.download_button(label='📥 Download Excel file', data=excel_data, file_name='converted_data.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        except json.JSONDecodeError:
+            st.error("The uploaded file is not a valid JSON.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
 # Streamlit App
 st.sidebar.title('Navigation')
-option = st.sidebar.selectbox('Select a section:', ['Altman Z Score', 'Futures Pricing'])
+option = st.sidebar.radio('Select a section:', ['Altman Z Score', 'Futures Pricing', 'JSON Conversion'])
 
 if option == 'Altman Z Score':
     st.title('Altman Z-Score Calculator')
@@ -143,6 +248,10 @@ if option == 'Altman Z Score':
         df_styled = df.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
         st.dataframe(df_styled)
 
+        # Add footer
+        st.markdown("---")
+        st.markdown("Credit for this implementation goes to Sugath Mudali. Very slight changes were made from the original Medium blog post.")
+
 elif option == 'Futures Pricing':
     st.title('Futures Pricing')
     ticker = st.text_input('Enter the Futures Ticker Symbol (e.g., CL=F):', 'CL=F')
@@ -163,4 +272,7 @@ elif option == 'Futures Pricing':
             file_name=csv_file_name,
             mime='text/csv',
         )
+
+elif option == 'JSON Conversion':
+    json_conversion()
 
