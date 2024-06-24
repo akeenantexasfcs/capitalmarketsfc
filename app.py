@@ -55,7 +55,7 @@ def z_score(ticker):
         ratio_3 = ratio_x_3(ticker)
         ratio_4 = ratio_x_4(ticker)
         ratio_5 = ratio_x_5(ticker)
-        zscore = 1.2 * ratio_1 + 1.4 * ratio_2 + 3.3 * ratio_3 + 0.6 * ratio_4 + 1.0 * ratio_5
+        zscore = 1.2 * ratio_1 + 1.4 * ratio_2 + 3.3 * ratio_3 + 0.6 * ratio_x_4 + 1.0 * ratio_5
         return zscore
     except Exception as e:
         return np.nan
@@ -106,7 +106,27 @@ def json_conversion():
             st.subheader("Data Preview")
             st.dataframe(all_tables)
 
+            st.subheader("Select numerical columns")
+            numerical_columns = []
+            for col in all_tables.columns:
+                if st.checkbox(f"Numerical column '{col}'", value=False, key=f"num_{col}"):
+                    numerical_columns.append(col)
+
+            def clean_numeric_value(value):
+                value_str = str(value).strip()
+                if value_str.startswith('(') and value_str.endswith(')'):
+                    value_str = '-' + value_str[1:-1]
+                cleaned_value = re.sub(r'[$,]', '', value_str)
+                try:
+                    return float(cleaned_value)
+                except ValueError:
+                    return 0
+
             if st.button("Convert and Download Excel", key="convert_download"):
+                for col in numerical_columns:
+                    if col in all_tables.columns:
+                        all_tables[col] = all_tables[col].apply(clean_numeric_value)
+
                 def to_excel(df):
                     output = BytesIO()
                     writer = pd.ExcelWriter(output, engine='xlsxwriter')
