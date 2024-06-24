@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[3]:
 
 
 import streamlit as st
@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import json
 from io import BytesIO
+import re
 
 # Function to get futures data
 def get_futures_data(ticker_symbol, start_date, end_date):
@@ -105,48 +106,7 @@ def json_conversion():
             st.subheader("Data Preview")
             st.dataframe(all_tables)
 
-            st.subheader("Select numerical columns")
-            numerical_columns = []
-            for col in all_tables.columns:
-                if st.checkbox(f"Numerical column '{col}'", value=False, key=f"num_{col}"):
-                    numerical_columns.append(col)
-
-            st.subheader("Label Units")
-            selected_columns = st.multiselect("Select columns for conversion", options=numerical_columns, key="columns_selection")
-            selected_value = st.radio("Select conversion value", ["Actuals", "Thousands", "Millions", "Billions"], index=0, key="conversion_value")
-
-            conversion_factors = {
-                "Actuals": 1,
-                "Thousands": 1000,
-                "Millions": 1000000,
-                "Billions": 1000000000
-            }
-
-            def clean_numeric_value(value):
-                value_str = str(value).strip()
-                if value_str.startswith('(') and value_str.endswith(')'):
-                    value_str = '-' + value_str[1:-1]
-                cleaned_value = re.sub(r'[$,]', '', value_str)
-                try:
-                    return float(cleaned_value)
-                except ValueError:
-                    return 0
-
-            def apply_unit_conversion(df, columns, factor):
-                for selected_column in columns:
-                    if selected_column in df.columns:
-                        df[selected_column] = df[selected_column].apply(
-                            lambda x: x * factor if isinstance(x, (int, float)) else x)
-                return df
-
             if st.button("Convert and Download Excel", key="convert_download"):
-                for col in numerical_columns:
-                    if col in all_tables.columns:
-                        all_tables[col] = all_tables[col].apply(clean_numeric_value)
-
-                if selected_value != "Actuals":
-                    all_tables = apply_unit_conversion(all_tables, selected_columns, conversion_factors[selected_value])
-
                 def to_excel(df):
                     output = BytesIO()
                     writer = pd.ExcelWriter(output, engine='xlsxwriter')
@@ -248,9 +208,9 @@ if option == 'Altman Z Score':
         df_styled = df.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
         st.dataframe(df_styled)
 
-        # Add footer
-        st.markdown("---")
-        st.markdown("Credit for this implementation goes to Sugath Mudali. Very slight changes were made from the original Medium blog post.")
+    # Add footer
+    st.markdown("---")
+    st.markdown("Credit for this implementation goes to Sugath Mudali. Very slight changes were made from the original Medium blog post.")
 
 elif option == 'Futures Pricing':
     st.title('Futures Pricing')
