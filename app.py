@@ -205,8 +205,9 @@ def create_loan_calculator():
     styled_df_secondary = df_secondary.style.set_properties(**{'background-color': 'white', 'color': 'black'})
 
     # Display the styled DataFrame
+    st.write("Pricing Information:")
     st.dataframe(styled_df_main)
-    st.write("Details")
+    st.write("Details:")
     st.dataframe(styled_df_secondary)
 
     # Export to Excel with space between tables
