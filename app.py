@@ -184,11 +184,16 @@ def create_loan_calculator():
     # Calculate Association Spread
     assoc_spread = spread + csa + sofr - cofs
 
+    # Calculate Income and Capital Yield
+    income_yield = assoc_spread + direct_note_patronage + (upfront_fee/years_to_maturity) - servicing_fee
+    patronage_value = 0 if patronage == "Non-Patronage" else direct_note_patronage
+    capital_yield = income_yield - patronage_value
+
     # Create DataFrame
     data = {
         'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Years to Maturity', 'Direct Note Pat'],
         loan_type: [f"{assoc_spread:.2f}%", 
-                    f"{0.00:.2f}%" if patronage == "Non-Patronage" else "0.00%", 
+                    f"{patronage_value:.2f}%", 
                     f"{fee_in_lieu:.2f}%", 
                     f"-{servicing_fee:.2f}%", 
                     f"{upfront_fee/years_to_maturity:.2f}%", 
@@ -197,55 +202,68 @@ def create_loan_calculator():
     }
     df = pd.DataFrame(data)
 
-    # Calculate Income and Capital Yield
-    income_yield = assoc_spread + (0 if patronage == "Non-Patronage" else 0) + fee_in_lieu - servicing_fee + (upfront_fee/years_to_maturity)
-    capital_yield = income_yield
-
-    # Add Income and Capital Yield to DataFrame
-    df = pd.concat([df, pd.DataFrame({'Component': ['Income Yield'], loan_type: [f"{income_yield:.2f}%"]})], ignore_index=True)
-    df = pd.concat([df, pd.DataFrame({'Component': ['Capital Yield'], loan_type: [f"{capital_yield:.2f}%"]})], ignore_index=True)
-
     # Add PD and Name to DataFrame
     df = pd.concat([df, pd.DataFrame({'Component': ['PD'], loan_type: [pd_lgd]})], ignore_index=True)
     df = pd.concat([df, pd.DataFrame({'Component': ['Name'], loan_type: [company_name]})], ignore_index=True)
     df = pd.concat([df, pd.DataFrame({'Component': ['Eligibility'], loan_type: [eligibility]})], ignore_index=True)
 
-    # Style the DataFrame
-    styled_df = df.style.set_properties(**{
-        'background-color': 'white',
-        'color': 'black',
-        'border-color': 'black',
-        'border-style': 'solid',
-        'border-width': '1px'
+    # Add Income and Capital Yield to DataFrame
+    df_yield = pd.DataFrame({
+        'Component': ['Income Yield', 'Capital Yield'],
+        loan_type: [f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
     })
+
+    # Style the DataFrame
+    def highlight_yield(component, value):
+        if component in ['Income Yield', 'Capital Yield']:
+            return f'font-weight: bold; background-color: #f0f0f0;'
+        elif component in ['Patronage', 'Servicing Fee']:
+            return f'color: red;'
+        else:
+            return ''
+
+    styled_df = df.style.apply(lambda x: [highlight_yield(x['Component'], v) for v in x], axis=1)
     styled_df = styled_df.set_table_styles([
         {'selector': 'th', 'props': [('background-color', '#f0f0f0'), ('font-weight', 'bold')]},
         {'selector': 'td', 'props': [('text-align', 'center')]},
         {'selector': 'th:first-child, td:first-child', 'props': [('text-align', 'left')]}
     ])
 
-    # Display the styled DataFrame
+    # Display the styled DataFrame and Income/Capital Yield
     st.write(styled_df)
+    st.write(df_yield.style.set_properties(subset=[loan_type], **{'font-weight': 'bold', 'background-color': '#f0f0f0'}))
 
     # Export to Excel
     if st.button("Export to Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Loan Calculation', index=False)
+            df_yield.to_excel(writer, sheet_name='Loan Calculation', startrow=len(df) + 2, index=False)
+
             workbook = writer.book
             worksheet = writer.sheets['Loan Calculation']
             
             # Add formatting
             header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
             cell_format = workbook.add_format({'border': 1})
-            
+            yield_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
+            red_format = workbook.add_format({'border': 1, 'font_color': 'red'})
+
+            # Write headers
             for col_num, value in enumerate(df.columns.values):
                 worksheet.write(0, col_num, value, header_format)
-                
+
+            # Write data
             for row_num in range(1, len(df) + 1):
                 for col_num in range(len(df.columns)):
-                    worksheet.write(row_num, col_num, df.iloc[row_num-1, col_num], cell_format)
-            
+                    cell_fmt = red_format if df.iloc[row_num-1, 0] in ['Patronage', 'Servicing Fee'] else cell_format
+                    worksheet.write(row_num, col_num, df.iloc[row_num-1, col_num], cell_fmt)
+
+            # Write yields
+            yield_row_start = len(df) + 2
+            for row_num, row in enumerate(df_yield.itertuples(index=False), start=yield_row_start):
+                worksheet.write_row(row_num, 0, row, yield_format)
+
             worksheet.set_column(0, 0, 20)
             worksheet.set_column(1, 1, 15)
 
