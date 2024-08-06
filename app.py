@@ -202,13 +202,13 @@ def create_loan_calculator():
     capital_yield = income_yield
 
     # Add Income and Capital Yield to DataFrame
-    df = df.append({'Component': 'Income Yield', loan_type: f"{income_yield:.2f}%"}, ignore_index=True)
-    df = df.append({'Component': 'Capital Yield', loan_type: f"{capital_yield:.2f}%"}, ignore_index=True)
+    df = pd.concat([df, pd.DataFrame({'Component': ['Income Yield'], loan_type: [f"{income_yield:.2f}%"]})], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame({'Component': ['Capital Yield'], loan_type: [f"{capital_yield:.2f}%"]})], ignore_index=True)
 
     # Add PD and Name to DataFrame
-    df = df.append({'Component': 'PD', loan_type: pd_lgd}, ignore_index=True)
-    df = df.append({'Component': 'Name', loan_type: company_name}, ignore_index=True)
-    df = df.append({'Component': 'Eligibility', loan_type: eligibility}, ignore_index=True)
+    df = pd.concat([df, pd.DataFrame({'Component': ['PD'], loan_type: [pd_lgd]})], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame({'Component': ['Name'], loan_type: [company_name]})], ignore_index=True)
+    df = pd.concat([df, pd.DataFrame({'Component': ['Eligibility'], loan_type: [eligibility]})], ignore_index=True)
 
     # Style the DataFrame
     styled_df = df.style.set_properties(**{
