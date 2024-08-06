@@ -116,44 +116,66 @@ def json_conversion():
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
-# Loan Calculator
+# Place Loan Calculator Code here at the bottom to make it easier to update
 def create_loan_calculator():
     st.title("Loan Calculator")
 
+    # Define defaults for a cleaner reset
+    default_values = {
+        'Loan Type': "Revolver",
+        'PD/LGD': "PD",
+        'Company Name': "Dead River Company",
+        'Eligibility': "Directly Eligible",
+        'Patronage': "Non-Patronage",
+        'Revolver': "No",
+        'Direct Note Patronage (%)': 0.40,
+        'Fee in lieu (%)': 0.00,
+        'SPREAD (%)': 0.00,
+        'CSA (%)': 0.00,
+        'SOFR (%)': 0.00,
+        'COFs (%)': 0.00,
+        'Upfront Fee (%)': 0.00,
+        'Servicing Fee (%)': 0.15,
+        'Years to Maturity': 5.0
+    }
+
     # Loan Type Input
-    loan_type = st.text_input("Loan Type", "Revolver")
+    loan_type = st.text_input("Loan Type", default_values['Loan Type'])
 
     # PD/LGD, Company Name, and Eligibility Inputs at the top
-    pd_lgd = st.text_input("PD/LGD", "PD")
-    company_name = st.text_input("Company Name", "Dead River Company")
-    eligibility = st.radio("Eligibility", ["Directly Eligible", "Similar Entity"])
+    pd_lgd = st.text_input("PD/LGD", default_values['PD/LGD'])
+    company_name = st.text_input("Company Name", default_values['Company Name'])
+    eligibility_options = ["Directly Eligible", "Similar Entity"]
+    eligibility = st.radio("Eligibility", options=eligibility_options, index=eligibility_options.index(default_values['Eligibility']))
 
     # Patronage Radio Button
-    patronage = st.radio("Patronage", ["Patronage", "Non-Patronage"])
+    patronage_options = ["Patronage", "Non-Patronage"]
+    patronage = st.radio("Patronage", options=patronage_options, index=patronage_options.index(default_values['Patronage']))
 
     # Years to Maturity Slider
-    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, 5.0, 0.5)
+    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, default_values['Years to Maturity'], 0.5)
 
     # Revolver Radio Button
-    revolver = st.radio("Revolver", ["Yes", "No"])
+    revolver_options = ["Yes", "No"]
+    revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(default_values['Revolver']))
 
     # Direct Note Patronage Input
-    direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=0.40, step=0.01, format="%.2f")
+    direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=default_values['Direct Note Patronage (%)'], step=0.01, format="%.2f")
 
     # Fee in lieu Input
-    fee_in_lieu = st.number_input("Fee in lieu (%)", value=0.00, step=0.01, format="%.2f")
+    fee_in_lieu = st.number_input("Fee in lieu (%)", value=default_values['Fee in lieu (%)'], step=0.01, format="%.2f")
 
     # SPREAD, CSA, SOFR, and COFs Inputs
-    spread = st.number_input("SPREAD (%)", value=0.00, step=0.01, format="%.2f")
-    csa = st.number_input("CSA (%)", value=0.00, step=0.01, format="%.2f")
-    sofr = st.number_input("SOFR (%)", value=0.00, step=0.01, format="%.2f")
-    cofs = st.number_input("COFs (%)", value=0.00, step=0.01, format="%.2f")
+    spread = st.number_input("SPREAD (%)", value=default_values['SPREAD (%)'], step=0.01, format="%.2f")
+    csa = st.number_input("CSA (%)", value=default_values['CSA (%)'], step=0.01, format="%.2f")
+    sofr = st.number_input("SOFR (%)", value=default_values['SOFR (%)'], step=0.01, format="%.2f")
+    cofs = st.number_input("COFs (%)", value=default_values['COFs (%)'], step=0.01, format="%.2f")
 
     # Upfront Fee Input
-    upfront_fee = st.number_input("Upfront Fee (%)", value=0.00, step=0.01, format="%.2f")
+    upfront_fee = st.number_input("Upfront Fee (%)", value=default_values['Upfront Fee (%)'], step=0.01, format="%.2f")
 
     # Servicing Fee Input
-    servicing_fee = st.number_input("Servicing Fee (%)", value=0.15, step=0.01, format="%.2f")
+    servicing_fee = st.number_input("Servicing Fee (%)", value=default_values['Servicing Fee (%)'], step=0.01, format="%.2f")
 
     # Calculate Association Spread
     assoc_spread = spread + csa + sofr - cofs
@@ -163,56 +185,45 @@ def create_loan_calculator():
     patronage_value = 0 if patronage == "Non-Patronage" else direct_note_patronage
     capital_yield = income_yield - patronage_value
 
-    # Create DataFrame for components and yields
-    data = {
-        'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Years to Maturity', 'Direct Note Pat', 'PD', 'Name', 'Eligibility', 'Income Yield', 'Capital Yield'],
-        loan_type: [f"{assoc_spread:.2f}%", 
-                    f"{patronage_value:.2f}%", 
-                    f"{fee_in_lieu:.2f}%", 
-                    f"-{servicing_fee:.2f}%", 
-                    f"{upfront_fee/years_to_maturity:.2f}%", 
-                    f"{years_to_maturity:.1f} years", 
-                    f"{direct_note_patronage:.2f}%",
-                    pd_lgd, 
-                    company_name, 
-                    eligibility, 
-                    f"{income_yield:.2f}%", 
-                    f"{capital_yield:.2f}%"]
+    # Create DataFrame for main components and a separate one for PD, Name, and Eligibility
+    data_main = {
+        'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Years to Maturity', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
+        loan_type: [f"{assoc_spread:.2f}%", f"{patronage_value:.2f}%", f"{fee_in_lieu:.2f}%", f"-{servicing_fee:.2f}%", f"{upfront_fee/years_to_maturity:.2f}%", f"{years_to_maturity:.1f} years", f"{direct_note_patronage:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
     }
-    df = pd.DataFrame(data)
+    data_secondary = {
+        'ID': ['PD', 'Name', 'Eligibility'],
+        'Value': [pd_lgd, company_name, eligibility]
+    }
+    df_main = pd.DataFrame(data_main)
+    df_secondary = pd.DataFrame(data_secondary)
 
-    # Styling
-    def highlight_specific_rows(row):
-        if row['Component'] in ['Income Yield', 'Capital Yield']:
-            return ['background-color: yellow; font-weight: bold'] * 2
-        elif row['Component'] in ['Patronage', 'Servicing Fee']:
-            return ['color: red'] * 2
-        return [''] * 2
+    # Styling for the main table
+    def apply_main_table_styles(row):
+        return ['background-color: rgb(94, 151, 50); color: white; font-weight: bold' if row['Component'] in ['Income Yield', 'Capital Yield'] else ''] * 2
 
-    styled_df = df.style.apply(highlight_specific_rows, axis=1)
-    st.dataframe(styled_df)
+    styled_df_main = df_main.style.apply(apply_main_table_styles, axis=1)
+    styled_df_secondary = df_secondary.style.set_properties(**{'background-color': 'white', 'color': 'black'})
 
-    # Export to Excel
+    # Display the styled DataFrame
+    st.dataframe(styled_df_main)
+    st.write("Details")
+    st.dataframe(styled_df_secondary)
+
+    # Export to Excel with space between tables
     if st.button("Export to Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            df.to_excel(writer, index=False)
-            workbook = writer.book
+            df_main.to_excel(writer, sheet_name='Loan Calculation', index=False)
             worksheet = writer.sheets['Loan Calculation']
+            start_row = len(df_main) + 2
+            df_secondary.to_excel(writer, sheet_name='Loan Calculation', startrow=start_row, index=False)
+
             # Add formatting
+            workbook = writer.book
             header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
             cell_format = workbook.add_format({'border': 1})
-            red_format = workbook.add_format({'border': 1, 'font_color': 'red'})
-            # Write headers
-            for col_num, value in enumerate(df.columns.values):
-                worksheet.write(0, col_num, value, header_format)
-            # Write data
-            for row_num in range(1, len(df) + 1):
-                for col_num in range(len(df.columns)):
-                    cell_fmt = red_format if df.iloc[row_num - 1, 0] in ['Patronage', 'Servicing Fee'] else cell_format
-                    worksheet.write(row_num, col_num, df.iloc[row_num - 1, col_num], cell_fmt)
-            worksheet.set_column(0, 0, 20)
-            worksheet.set_column(1, 1, 15)
+            worksheet.set_column('A:B', 20, cell_format)
+
         output.seek(0)
         st.download_button(
             label="Download Excel file",
@@ -222,8 +233,9 @@ def create_loan_calculator():
         )
 
     # Clear button
-    if st.button("Clear"):
-        st.experimental_rerun()
+    if st.button("Reset"):
+        for key, val in default_values.items():
+            st.session_state[key] = val
 
 # Streamlit App
 st.sidebar.title('Navigation')
