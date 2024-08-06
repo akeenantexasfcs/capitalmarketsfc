@@ -142,9 +142,128 @@ def json_conversion():
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
+# Loan Calculator
+def create_loan_calculator():
+    st.title("Loan Calculator")
+
+    # Loan Type Input
+    loan_type = st.text_input("Loan Type", "Revolver")
+
+    # PD/LGD, Company Name, and Eligibility Inputs
+    pd_lgd = st.text_input("PD/LGD", "PD")
+    company_name = st.text_input("Company Name", "Dead River Company")
+    eligibility = st.radio("Eligibility", ["Directly Eligible", "Similar Entity"])
+
+    # Patronage Radio Button
+    patronage = st.radio("Patronage", ["Patronage", "Non-Patronage"])
+
+    # Years to Maturity Slider
+    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, 5.0, 0.5)
+
+    # Revolver Radio Button
+    revolver = st.radio("Revolver", ["Yes", "No"])
+
+    # Direct Note Patronage Input
+    direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=0.40, step=0.01, format="%.2f")
+
+    # Fee in lieu Input
+    fee_in_lieu = st.number_input("Fee in lieu (%)", value=0.00, step=0.01, format="%.2f")
+
+    # SPREAD, CSA, SOFR, and COFs Inputs
+    spread = st.number_input("SPREAD (%)", value=0.00, step=0.01, format="%.2f")
+    csa = st.number_input("CSA (%)", value=0.00, step=0.01, format="%.2f")
+    sofr = st.number_input("SOFR (%)", value=0.00, step=0.01, format="%.2f")
+    cofs = st.number_input("COFs (%)", value=0.00, step=0.01, format="%.2f")
+
+    # Upfront Fee Input
+    upfront_fee = st.number_input("Upfront Fee (%)", value=0.00, step=0.01, format="%.2f")
+
+    # Servicing Fee Input
+    servicing_fee = st.number_input("Servicing Fee (%)", value=0.15, step=0.01, format="%.2f")
+
+    # Calculate Association Spread
+    assoc_spread = spread + csa + sofr - cofs
+
+    # Create DataFrame
+    data = {
+        'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Years to Maturity', 'Direct Note Pat'],
+        loan_type: [f"{assoc_spread:.2f}%", 
+                    f"{0.00:.2f}%" if patronage == "Non-Patronage" else "0.00%", 
+                    f"{fee_in_lieu:.2f}%", 
+                    f"-{servicing_fee:.2f}%", 
+                    f"{upfront_fee/years_to_maturity:.2f}%", 
+                    f"{years_to_maturity:.1f} years", 
+                    f"{direct_note_patronage:.2f}%"]
+    }
+    df = pd.DataFrame(data)
+
+    # Calculate Income and Capital Yield
+    income_yield = assoc_spread + (0 if patronage == "Non-Patronage" else 0) + fee_in_lieu - servicing_fee + (upfront_fee/years_to_maturity)
+    capital_yield = income_yield
+
+    # Add Income and Capital Yield to DataFrame
+    df = df.append({'Component': 'Income Yield', loan_type: f"{income_yield:.2f}%"}, ignore_index=True)
+    df = df.append({'Component': 'Capital Yield', loan_type: f"{capital_yield:.2f}%"}, ignore_index=True)
+
+    # Add PD and Name to DataFrame
+    df = df.append({'Component': 'PD', loan_type: pd_lgd}, ignore_index=True)
+    df = df.append({'Component': 'Name', loan_type: company_name}, ignore_index=True)
+    df = df.append({'Component': 'Eligibility', loan_type: eligibility}, ignore_index=True)
+
+    # Style the DataFrame
+    styled_df = df.style.set_properties(**{
+        'background-color': 'white',
+        'color': 'black',
+        'border-color': 'black',
+        'border-style': 'solid',
+        'border-width': '1px'
+    })
+    styled_df = styled_df.set_table_styles([
+        {'selector': 'th', 'props': [('background-color', '#f0f0f0'), ('font-weight', 'bold')]},
+        {'selector': 'td', 'props': [('text-align', 'center')]},
+        {'selector': 'th:first-child, td:first-child', 'props': [('text-align', 'left')]}
+    ])
+
+    # Display the styled DataFrame
+    st.write(styled_df)
+
+    # Export to Excel
+    if st.button("Export to Excel"):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, sheet_name='Loan Calculation', index=False)
+            workbook = writer.book
+            worksheet = writer.sheets['Loan Calculation']
+            
+            # Add formatting
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
+            cell_format = workbook.add_format({'border': 1})
+            
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+                
+            for row_num in range(1, len(df) + 1):
+                for col_num in range(len(df.columns)):
+                    worksheet.write(row_num, col_num, df.iloc[row_num-1, col_num], cell_format)
+            
+            worksheet.set_column(0, 0, 20)
+            worksheet.set_column(1, 1, 15)
+
+        output.seek(0)
+        st.download_button(
+            label="Download Excel file",
+            data=output.getvalue(),
+            file_name="loan_calculation.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    # Clear button
+    if st.button("Clear"):
+        st.experimental_rerun()
+
 # Streamlit App
 st.sidebar.title('Navigation')
-option = st.sidebar.radio('Select a section:', ['Altman Z Score', 'Futures Pricing', 'JSON Conversion'])
+option = st.sidebar.radio('Select a section:', ['Altman Z Score', 'Futures Pricing', 'JSON Conversion', 'Loan Calculator'])
 
 if option == 'Altman Z Score':
     st.title('Altman Z-Score Calculator')
@@ -255,4 +374,7 @@ elif option == 'Futures Pricing':
 
 elif option == 'JSON Conversion':
     json_conversion()
+
+elif option == 'Loan Calculator':
+    create_loan_calculator()
 
