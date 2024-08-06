@@ -108,7 +108,7 @@ def json_conversion():
             if st.button("Convert and Download Excel", key="convert_download"):
                 for col in numerical_columns:
                     if col in all_tables.columns:
-                        all_tables[col] = all_tables[col].apply(clean_numeric_value)
+                        all_tables[col] = all_tables[col].apply(lambda x: float(re.sub(r'[$,()]', '', x.strip().replace(')', '').replace('(', '-')) if x.strip() else 0))
                 excel_data = to_excel(all_tables)
                 st.download_button(label='📥 Download Excel file', data=excel_data, file_name='converted_data.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         except json.JSONDecodeError:
@@ -190,7 +190,7 @@ def create_loan_calculator():
         return [''] * 2
 
     styled_df = df.style.apply(highlight_specific_rows, axis=1)
-    st.write(styled_df.render(), unsafe_allow_html=True)
+    st.dataframe(styled_df)
 
     # Export to Excel
     if st.button("Export to Excel"):
