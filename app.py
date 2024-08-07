@@ -139,11 +139,14 @@ def initialize_defaults():
 
 # Reset callback function
 def reset_defaults():
+    if 'default_values' not in st.session_state:
+        initialize_defaults()
     st.session_state.loans = [st.session_state.default_values.copy() for _ in range(4)]
     st.session_state.current_loan_count = 1
 
 # Initialize session state
 if 'loans' not in st.session_state:
+    initialize_defaults()
     reset_defaults()
 
 # Place Loan Calculator Code here at the bottom to make it easier to update
