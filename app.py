@@ -122,9 +122,9 @@ def create_loan_calculator():
 
     # Define defaults for a cleaner reset
     default_values = {
-        'Loan Type': "Revolver",
-        'PD/LGD': "PD",
-        'Company Name': "Dead River Company",
+        'Loan Type': "Insert Loan Type",
+        'PD/LGD': "Insert PD/LGD",
+        'Company Name': "Insert Company Name",
         'Eligibility': "Directly Eligible",
         'Patronage': "Non-Patronage",
         'Revolver': "No",
@@ -136,7 +136,8 @@ def create_loan_calculator():
         'COFs (%)': 0.00,
         'Upfront Fee (%)': 0.00,
         'Servicing Fee (%)': 0.15,
-        'Years to Maturity': 5.0
+        'Years to Maturity': 5.0,
+        'Unused Fee (%)': 0.00
     }
 
     # Loan Type Input
@@ -152,12 +153,14 @@ def create_loan_calculator():
     patronage_options = ["Patronage", "Non-Patronage"]
     patronage = st.radio("Patronage", options=patronage_options, index=patronage_options.index(default_values['Patronage']))
 
-    # Years to Maturity Slider
-    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, default_values['Years to Maturity'], 0.5)
-
     # Revolver Radio Button
     revolver_options = ["Yes", "No"]
     revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(default_values['Revolver']))
+
+    # Unused Fee Input (shown if Revolver is "Yes")
+    unused_fee = 0.00
+    if revolver == "Yes":
+        unused_fee = st.number_input("Unused Fee (%)", value=default_values['Unused Fee (%)'], step=0.01, format="%.2f")
 
     # Direct Note Patronage Input
     direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=default_values['Direct Note Patronage (%)'], step=0.01, format="%.2f")
@@ -177,6 +180,9 @@ def create_loan_calculator():
     # Servicing Fee Input
     servicing_fee = st.number_input("Servicing Fee (%)", value=default_values['Servicing Fee (%)'], step=0.01, format="%.2f")
 
+    # Years to Maturity Slider
+    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, default_values['Years to Maturity'], 0.5)
+
     # Calculate Association Spread
     assoc_spread = spread + csa + sofr - cofs
 
@@ -187,12 +193,12 @@ def create_loan_calculator():
 
     # Create DataFrame for main components and a separate one for PD, Name, and Eligibility
     data_main = {
-        'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Years to Maturity', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
-        loan_type: [f"{assoc_spread:.2f}%", f"{patronage_value:.2f}%", f"{fee_in_lieu:.2f}%", f"-{servicing_fee:.2f}%", f"{upfront_fee/years_to_maturity:.2f}%", f"{years_to_maturity:.1f} years", f"{direct_note_patronage:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
+        'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
+        loan_type: [f"{assoc_spread:.2f}%", f"{patronage_value:.2f}%", f"{fee_in_lieu:.2f}%", f"-{servicing_fee:.2f}%", f"{upfront_fee/years_to_maturity:.2f}%", f"{direct_note_patronage:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
     }
     data_secondary = {
-        'ID': ['PD', 'Name', 'Eligibility'],
-        'Value': [pd_lgd, company_name, eligibility]
+        'ID': ['PD', 'Name', 'Eligibility', 'Years to Maturity', 'Unused Fee'],
+        'Value': [pd_lgd, company_name, eligibility, f"{years_to_maturity:.1f} years", f"{unused_fee:.2f}%"]
     }
     df_main = pd.DataFrame(data_main)
     df_secondary = pd.DataFrame(data_secondary)
