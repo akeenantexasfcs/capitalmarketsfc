@@ -137,6 +137,11 @@ def initialize_defaults():
         'Unused Fee (%)': 0.00
     }
 
+# Reset callback function
+def reset_defaults():
+    for key, value in st.session_state.default_values.items():
+        st.session_state[key] = value
+
 # Place Loan Calculator Code here at the bottom to make it easier to update
 def create_loan_calculator():
     st.title("Loan Calculator")
@@ -149,47 +154,47 @@ def create_loan_calculator():
     default_values = st.session_state.default_values
 
     # Loan Type Input
-    loan_type = st.text_input("Loan Type", default_values['Loan Type'], key='loan_type')
+    loan_type = st.text_input("Loan Type", value=st.session_state.get('Loan Type', default_values['Loan Type']), key='Loan Type')
 
     # PD/LGD, Company Name, and Eligibility Inputs at the top
-    pd_lgd = st.text_input("PD/LGD", default_values['PD/LGD'], key='pd_lgd')
-    company_name = st.text_input("Company Name", default_values['Company Name'], key='company_name')
+    pd_lgd = st.text_input("PD/LGD", value=st.session_state.get('PD/LGD', default_values['PD/LGD']), key='PD/LGD')
+    company_name = st.text_input("Company Name", value=st.session_state.get('Company Name', default_values['Company Name']), key='Company Name')
     eligibility_options = ["Directly Eligible", "Similar Entity"]
-    eligibility = st.radio("Eligibility", options=eligibility_options, index=eligibility_options.index(default_values['Eligibility']), key='eligibility')
+    eligibility = st.radio("Eligibility", options=eligibility_options, index=eligibility_options.index(st.session_state.get('Eligibility', default_values['Eligibility'])), key='Eligibility')
 
     # Patronage Radio Button
     patronage_options = ["Patronage", "Non-Patronage"]
-    patronage = st.radio("Patronage", options=patronage_options, index=patronage_options.index(default_values['Patronage']), key='patronage')
+    patronage = st.radio("Patronage", options=patronage_options, index=patronage_options.index(st.session_state.get('Patronage', default_values['Patronage'])), key='Patronage')
 
     # Revolver Radio Button
     revolver_options = ["Yes", "No"]
-    revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(default_values['Revolver']), key='revolver')
+    revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(st.session_state.get('Revolver', default_values['Revolver'])), key='Revolver')
 
     # Unused Fee Input (shown if Revolver is "Yes")
     unused_fee = "0.00%"
     if revolver == "Yes":
-        unused_fee = f"{st.number_input('Unused Fee (%)', value=default_values['Unused Fee (%)'], step=0.01, format='%.2f', key='unused_fee')}%"
+        unused_fee = f"{st.number_input('Unused Fee (%)', value=st.session_state.get('Unused Fee (%)', default_values['Unused Fee (%)']), step=0.01, format='%.2f', key='Unused Fee (%)')}%"
 
     # Direct Note Patronage Input
-    direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=default_values['Direct Note Patronage (%)'], step=0.01, format="%.2f", key='direct_note_patronage')
+    direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=st.session_state.get('Direct Note Patronage (%)', default_values['Direct Note Patronage (%)']), step=0.01, format="%.2f", key='Direct Note Patronage (%)')
 
     # Fee in lieu Input
-    fee_in_lieu = st.number_input("Fee in lieu (%)", value=default_values['Fee in lieu (%)'], step=0.01, format="%.2f", key='fee_in_lieu')
+    fee_in_lieu = st.number_input("Fee in lieu (%)", value=st.session_state.get('Fee in lieu (%)', default_values['Fee in lieu (%)']), step=0.01, format="%.2f", key='Fee in lieu (%)')
 
     # SPREAD, CSA, SOFR, and COFs Inputs
-    spread = st.number_input("SPREAD (%)", value=default_values['SPREAD (%)'], step=0.01, format="%.2f", key='spread')
-    csa = st.number_input("CSA (%)", value=default_values['CSA (%)'], step=0.01, format="%.2f", key='csa')
-    sofr = st.number_input("SOFR (%)", value=default_values['SOFR (%)'], step=0.01, format="%.2f", key='sofr')
-    cofs = st.number_input("COFs (%)", value=default_values['COFs (%)'], step=0.01, format="%.2f", key='cofs')
+    spread = st.number_input("SPREAD (%)", value=st.session_state.get('SPREAD (%)', default_values['SPREAD (%)']), step=0.01, format="%.2f", key='SPREAD (%)')
+    csa = st.number_input("CSA (%)", value=st.session_state.get('CSA (%)', default_values['CSA (%)']), step=0.01, format="%.2f", key='CSA (%)')
+    sofr = st.number_input("SOFR (%)", value=st.session_state.get('SOFR (%)', default_values['SOFR (%)']), step=0.01, format="%.2f", key='SOFR (%)')
+    cofs = st.number_input("COFs (%)", value=st.session_state.get('COFs (%)', default_values['COFs (%)']), step=0.01, format="%.2f", key='COFs (%)')
 
     # Upfront Fee Input
-    upfront_fee = st.number_input("Upfront Fee (%)", value=default_values['Upfront Fee (%)'], step=0.01, format="%.2f", key='upfront_fee')
+    upfront_fee = st.number_input("Upfront Fee (%)", value=st.session_state.get('Upfront Fee (%)', default_values['Upfront Fee (%)']), step=0.01, format="%.2f", key='Upfront Fee (%)')
 
     # Servicing Fee Input
-    servicing_fee = st.number_input("Servicing Fee (%)", value=default_values['Servicing Fee (%)'], step=0.01, format="%.2f", key='servicing_fee')
+    servicing_fee = st.number_input("Servicing Fee (%)", value=st.session_state.get('Servicing Fee (%)', default_values['Servicing Fee (%)']), step=0.01, format="%.2f", key='Servicing Fee (%)')
 
     # Years to Maturity Slider
-    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, default_values['Years to Maturity'], 0.5, key='years_to_maturity')
+    years_to_maturity = st.slider("Years to Maturity", 0.0, 30.0, value=st.session_state.get('Years to Maturity', default_values['Years to Maturity']), step=0.5, key='Years to Maturity')
 
     # Calculate Association Spread
     assoc_spread = spread + csa + sofr - cofs
@@ -247,25 +252,8 @@ def create_loan_calculator():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
-    # Clear button
-    if st.button("Reset"):
-        # Reset each field in the session state to its default value
-        st.session_state['loan_type'] = default_values['Loan Type']
-        st.session_state['pd_lgd'] = default_values['PD/LGD']
-        st.session_state['company_name'] = default_values['Company Name']
-        st.session_state['eligibility'] = default_values['Eligibility']
-        st.session_state['patronage'] = default_values['Patronage']
-        st.session_state['revolver'] = default_values['Revolver']
-        st.session_state['unused_fee'] = default_values['Unused Fee (%)']
-        st.session_state['direct_note_patronage'] = default_values['Direct Note Patronage (%)']
-        st.session_state['fee_in_lieu'] = default_values['Fee in lieu (%)']
-        st.session_state['spread'] = default_values['SPREAD (%)']
-        st.session_state['csa'] = default_values['CSA (%)']
-        st.session_state['sofr'] = default_values['SOFR (%)']
-        st.session_state['cofs'] = default_values['COFs (%)']
-        st.session_state['upfront_fee'] = default_values['Upfront Fee (%)']
-        st.session_state['servicing_fee'] = default_values['Servicing Fee (%)']
-        st.session_state['years_to_maturity'] = default_values['Years to Maturity']
+    # Clear button with a callback to reset defaults
+    st.button("Reset", on_click=reset_defaults)
 
 # Streamlit App
 st.sidebar.title('Navigation')
