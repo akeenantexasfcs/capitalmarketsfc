@@ -158,9 +158,9 @@ def create_loan_calculator():
     revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(default_values['Revolver']))
 
     # Unused Fee Input (shown if Revolver is "Yes")
-    unused_fee = "n/a"
+    unused_fee = "0.00%"
     if revolver == "Yes":
-        unused_fee = st.number_input("Unused Fee (%)", value=default_values['Unused Fee (%)'], step=0.01, format="%.2f")
+        unused_fee = f"{st.number_input('Unused Fee (%)', value=default_values['Unused Fee (%)'], step=0.01, format='%.2f')}%"
 
     # Direct Note Patronage Input
     direct_note_patronage = st.number_input("Direct Note Patronage (%)", value=default_values['Direct Note Patronage (%)'], step=0.01, format="%.2f")
