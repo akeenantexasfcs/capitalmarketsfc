@@ -158,7 +158,7 @@ def create_loan_calculator():
     revolver = st.radio("Revolver", options=revolver_options, index=revolver_options.index(default_values['Revolver']))
 
     # Unused Fee Input (shown if Revolver is "Yes")
-    unused_fee = 0.00
+    unused_fee = "n/a"
     if revolver == "Yes":
         unused_fee = st.number_input("Unused Fee (%)", value=default_values['Unused Fee (%)'], step=0.01, format="%.2f")
 
@@ -198,7 +198,7 @@ def create_loan_calculator():
     }
     data_secondary = {
         'ID': ['PD', 'Name', 'Eligibility', 'Years to Maturity', 'Unused Fee'],
-        'Value': [pd_lgd, company_name, eligibility, f"{years_to_maturity:.1f} years", f"{unused_fee:.2f}%"]
+        'Value': [pd_lgd, company_name, eligibility, f"{years_to_maturity:.1f} years", unused_fee]
     }
     df_main = pd.DataFrame(data_main)
     df_secondary = pd.DataFrame(data_secondary)
