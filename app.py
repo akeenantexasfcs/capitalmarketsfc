@@ -121,38 +121,6 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 
-# Initialize default values for the session state
-def initialize_defaults():
-    st.session_state.default_values = {
-        'Loan Type': "Insert Loan Type",
-        'PD/LGD': "Insert PD/LGD",
-        'Company Name': "Insert Company Name",
-        'Eligibility': "Directly Eligible",
-        'Patronage': "Non-Patronage",
-        'Revolver': "No",
-        'Direct Note Patronage (%)': 0.71,  # Updated to 0.71
-        'Fee in lieu (%)': 0.00,
-        'SPREAD (%)': 0.00,
-        'CSA (%)': 0.00,
-        'SOFR (%)': 0.00,
-        'COFs (%)': 0.00,
-        'Upfront Fee (%)': 0.00,
-        'Servicing Fee (%)': 0.15,
-        'Years to Maturity': 5.0,
-        'Unused Fee (%)': 0.00
-    }
-
-# Reset callback function
-def reset_defaults():
-    if 'default_values' not in st.session_state:
-        initialize_defaults()
-    st.session_state.loans = [st.session_state.default_values.copy() for _ in range(4)]
-    st.session_state.current_loan_count = 1
-
-# Initialize session state
-import streamlit as st
-import pandas as pd
-from io import BytesIO
 
 # Initialize default values for the session state
 def initialize_defaults():
@@ -163,7 +131,7 @@ def initialize_defaults():
         'Eligibility': "Directly Eligible",
         'Patronage': "Non-Patronage",
         'Revolver': "No",
-        'Direct Note Patronage (%)': 0.40,  # Corrected to 0.40
+        'Direct Note Patronage (%)': 0.40,  # Correct default value
         'Fee in lieu (%)': 0.00,
         'SPREAD (%)': 0.00,
         'CSA (%)': 0.00,
