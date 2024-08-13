@@ -150,6 +150,39 @@ def reset_defaults():
     st.session_state.current_loan_count = 1
 
 # Initialize session state
+import streamlit as st
+import pandas as pd
+from io import BytesIO
+
+# Initialize default values for the session state
+def initialize_defaults():
+    st.session_state.default_values = {
+        'Loan Type': "Insert Loan Type",
+        'PD/LGD': "Insert PD/LGD",
+        'Company Name': "Insert Company Name",
+        'Eligibility': "Directly Eligible",
+        'Patronage': "Non-Patronage",
+        'Revolver': "No",
+        'Direct Note Patronage (%)': 0.40,  # Corrected to 0.40
+        'Fee in lieu (%)': 0.00,
+        'SPREAD (%)': 0.00,
+        'CSA (%)': 0.00,
+        'SOFR (%)': 0.00,
+        'COFs (%)': 0.00,
+        'Upfront Fee (%)': 0.00,
+        'Servicing Fee (%)': 0.15,
+        'Years to Maturity': 5.0,
+        'Unused Fee (%)': 0.00
+    }
+
+# Reset callback function
+def reset_defaults():
+    if 'default_values' not in st.session_state:
+        initialize_defaults()
+    st.session_state.loans = [st.session_state.default_values.copy() for _ in range(4)]
+    st.session_state.current_loan_count = 1
+
+# Initialize session state
 if 'loans' not in st.session_state:
     initialize_defaults()
     reset_defaults()
@@ -210,14 +243,14 @@ def create_loan_calculator():
             assoc_spread = loan_data['SPREAD (%)'] + loan_data['CSA (%)'] + loan_data['SOFR (%)'] - loan_data['COFs (%)']
 
             # Calculate Income and Capital Yield
-            income_yield = assoc_spread + (loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']) - loan_data['Servicing Fee (%)']
-            patronage_value = 0 if loan_data['Patronage'] == "Non-Patronage" else loan_data['Direct Note Patronage (%)']
-            capital_yield = income_yield
+            income_yield = assoc_spread + loan_data['Direct Note Patronage (%)'] + (loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']) - loan_data['Servicing Fee (%)']
+            patronage_value = 0.71 if loan_data['Patronage'] == "Patronage" else 0
+            capital_yield = income_yield - patronage_value
 
             # Create DataFrame for main components and a separate one for PD, Name, and Eligibility
             data_main = {
                 'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
-                f"Loan {i + 1}": [f"{assoc_spread:.2f}%", f"{patronage_value:.2f}%", f"{loan_data['Fee in lieu (%)']:.2f}%", f"-{loan_data['Servicing Fee (%)']:.2f}%", f"{loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']:.2f}%", f"-{loan_data['Direct Note Patronage (%)']:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
+                f"Loan {i + 1}": [f"{assoc_spread:.2f}%", f"-{patronage_value:.2f}%", f"{loan_data['Fee in lieu (%)']:.2f}%", f"-{loan_data['Servicing Fee (%)']:.2f}%", f"{loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']:.2f}%", f"{loan_data['Direct Note Patronage (%)']:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
             }
             data_secondary = {
                 'ID': ['PD', 'Name', 'Eligibility', 'Years to Maturity', 'Unused Fee'],
