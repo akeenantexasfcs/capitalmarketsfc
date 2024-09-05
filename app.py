@@ -53,7 +53,12 @@ def z_score(ticker):
         return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
 # Streamlit App
-if 'Altman Z Score' in option:
+option = st.selectbox(
+    'Choose an option:',
+    ['Altman Z Score', 'Futures Pricing', 'JSON Conversion', 'Loan Pricing Calculator']
+)
+
+if option == 'Altman Z Score':
     st.title('Altman Z-Score Calculator')
     
     # Define the number of input slots
@@ -90,12 +95,13 @@ if 'Altman Z Score' in option:
 
         for idx, symbol in enumerate(tickers):
             zscore = symbol_to_data[symbol]['Z-Score']
-            if zscore <= 1.8:
-                distress[idx] = zscore
-            elif zscore > 1.8 and zscore <= 2.99:
-                grey[idx] = zscore
-            else:
-                safe[idx] = zscore
+            if pd.notna(zscore):
+                if zscore <= 1.8:
+                    distress[idx] = zscore
+                elif zscore > 1.8 and zscore <= 2.99:
+                    grey[idx] = zscore
+                else:
+                    safe[idx] = zscore
 
         # Create DataFrame
         data_dict = {'Symbol': tickers, 'Distress Zone': distress, 'Grey Zone': grey, 'Safe Zone': safe}
@@ -193,8 +199,10 @@ elif option == 'Futures Pricing':
         )
 
 elif option == 'JSON Conversion':
-    json_conversion()
+    st.title('JSON Conversion')
+    st.write("Implement JSON conversion functionality here.")
 
 elif option == 'Loan Pricing Calculator':
-    create_loan_calculator()
+    st.title('Loan Pricing Calculator')
+    st.write("Implement loan pricing calculator here.")
 
