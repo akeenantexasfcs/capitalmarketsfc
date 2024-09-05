@@ -8,7 +8,15 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
+import json
 from io import BytesIO
+import re
+
+# Function to get futures data
+def get_futures_data(ticker_symbol, start_date, end_date):
+    ticker_data = yf.Ticker(ticker_symbol)
+    ticker_df = ticker_data.history(period='1d', start=start_date, end=end_date)
+    return ticker_df
 
 # Altman Z-Score Calculation Functions
 def ratio_x_1(ticker):
@@ -52,11 +60,65 @@ def z_score(ticker):
     except Exception as e:
         return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
+# JSON Conversion Functionality
+def json_conversion():
+    st.title("JSON Conversion")
+    uploaded_file = st.file_uploader("Choose a JSON file", type="json", key='json_uploader')
+    if uploaded_file is not None:
+        try:
+            file_contents = uploaded_file.read().decode('utf-8')
+            data = json.loads(file_contents)
+            st.text(f"File size: {len(file_contents)} bytes")
+            tables = []
+            for block in data['Blocks']:
+                if block['BlockType'] == 'TABLE':
+                    table = {}
+                    if 'Relationships' in block:
+                        for relationship in block['Relationships']:
+                            if relationship['Type'] == 'CHILD':
+                                for cell_id in relationship['Ids']:
+                                    cell_block = next((b for b in data['Blocks'] if b['Id'] == cell_id), None)
+                                    if cell_block:
+                                        row_index = cell_block.get('RowIndex', 0)
+                                        col_index = cell_block.get('ColumnIndex', 0)
+                                        if row_index not in table:
+                                            table[row_index] = {}
+                                        cell_text = ''
+                                        if 'Relationships' in cell_block:
+                                            for rel in cell_block['Relationships']:
+                                                if rel['Type'] == 'CHILD':
+                                                    for word_id in rel['Ids']:
+                                                        word_block = next((w for w in data['Blocks'] if w['Id'] == word_id), None)
+                                                        if word_block and word_block['BlockType'] == 'WORD':
+                                                            cell_text += ' ' + word_block.get('Text', '')
+                                        table[row_index][col_index] = cell_text.strip()
+                    table_df = pd.DataFrame.from_dict(table, orient='index').sort_index()
+                    table_df = table_df.sort_index(axis=1)
+                    tables.append(table_df)
+            all_tables = pd.concat(tables, axis=0, ignore_index=True)
+            if len(all_tables.columns) == 0:
+                st.error("No columns found in the uploaded JSON file.")
+                return
+            st.subheader("Data Preview")
+            st.dataframe(all_tables)
+            numerical_columns = []
+            for col in all_tables.columns:
+                if st.checkbox(f"Numerical column '{col}'", value=False, key=f"num_{col}"):
+                    numerical_columns.append(col)
+            if st.button("Convert and Download Excel", key="convert_download"):
+                for col in numerical_columns:
+                    if col in all_tables.columns:
+                        all_tables[col] = all_tables[col].apply(lambda x: float(re.sub(r'[$,()]', '', x.strip().replace(')', '').replace('(', '-')) if x.strip() else 0))
+                excel_data = to_excel(all_tables)
+                st.download_button(label='📥 Download Excel file', data=excel_data, file_name='converted_data.xlsx', mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        except json.JSONDecodeError:
+            st.error("The uploaded file is not a valid JSON.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
 # Streamlit App
-option = st.selectbox(
-    'Choose an option:',
-    ['Altman Z Score', 'Futures Pricing', 'JSON Conversion', 'Loan Pricing Calculator']
-)
+st.sidebar.title('Navigation')
+option = st.sidebar.radio('Select a section:', ['Altman Z Score', 'Futures Pricing', 'JSON Conversion', 'Loan Pricing Calculator'])
 
 if option == 'Altman Z Score':
     st.title('Altman Z-Score Calculator')
@@ -149,34 +211,34 @@ if option == 'Altman Z Score':
         df_styled = df.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
         st.dataframe(df_styled)
 
-        # Add "Audit Z-Score" button
-        if st.button('Audit Z-Score'):
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                for symbol, data in symbol_to_data.items():
-                    df_audit = pd.DataFrame.from_dict(data, orient='index', columns=[symbol])
-                    df_audit.to_excel(writer, sheet_name=symbol)
-
-                    # Add formatting
-                    workbook = writer.book
-                    worksheet = writer.sheets[symbol]
-                    header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
-                    cell_format = workbook.add_format({'border': 1})
-                    worksheet.set_column('A:B', 20, cell_format)
-                    worksheet.write('A1', 'Component', header_format)
-                    worksheet.write('B1', symbol, header_format)
-
-            output.seek(0)
-            st.download_button(
-                label="Download Audit Excel file",
-                data=output.getvalue(),
-                file_name="z_score_audit.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        # Add "Audit" button for CSV export
+        if st.button('Audit'):
+            for symbol, data in symbol_to_data.items():
+                df_audit = pd.DataFrame({
+                    'Ticker': [symbol],
+                    'X1': [data['Ratio X1']],
+                    'X2': [data['Ratio X2']],
+                    'X3': [data['Ratio X3']],
+                    'X4': [data['Ratio X4']],
+                    'X5': [data['Ratio X5']],
+                    'Total Z-Score': [data['Z-Score']]
+                })
+                
+                # Convert DataFrame to CSV format
+                csv = df_audit.to_csv(index=False)
+                
+                # Create a download button for each ticker
+                st.download_button(
+                    label=f"Download {symbol} Audit CSV",
+                    data=csv,
+                    file_name=f"{symbol}_zscore_audit.csv",
+                    mime='text/csv',
+                )
 
     # Add footer
     st.markdown("---")
     st.markdown("Credit for this implementation goes to Sugath Mudali. Very slight changes were made from the original Medium blog post.")
+
 elif option == 'Futures Pricing':
     st.title('Futures Pricing')
     ticker = st.text_input('Enter the Futures Ticker Symbol (e.g., CL=F):', 'CL=F')
@@ -199,10 +261,8 @@ elif option == 'Futures Pricing':
         )
 
 elif option == 'JSON Conversion':
-    st.title('JSON Conversion')
-    st.write("Implement JSON conversion functionality here.")
+    json_conversion()
 
 elif option == 'Loan Pricing Calculator':
-    st.title('Loan Pricing Calculator')
-    st.write("Implement loan pricing calculator here.")
+    create_loan_calculator()
 
