@@ -60,13 +60,14 @@ def z_score(ticker):
     except Exception as e:
         return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
 
-# Styling for the Altman Z Score table
+# Custom formatter that checks for numeric values
 def format_score(val):
     try:
         return '{:.2f}'.format(float(val))
-    except:
-        return ''
+    except (ValueError, TypeError):
+        return val
 
+# Styling for Altman Z Score table
 def highlight_grey(val):
     return 'background-color: grey' if not pd.isna(val) else ''
 
@@ -156,6 +157,11 @@ def json_conversion():
         except Exception as e:
             st.error(f"An error occurred: {e}")
 
+# Loan Pricing Calculator Placeholder
+def create_loan_calculator():
+    st.title("Loan Pricing Calculator")
+    st.write("Loan calculator functionality goes here.")
+
 # Streamlit App
 st.sidebar.title('Navigation')
 option = st.sidebar.radio('Select a section:', ['Altman Z Score', 'Futures Pricing', 'JSON Conversion', 'Loan Pricing Calculator'])
@@ -164,7 +170,7 @@ if option == 'Altman Z Score':
     st.title('Altman Z-Score Calculator')
     
     # Define the number of input slots
-    NUM_INPUTS = 10
+    NUM_INPUTS = 4
     
     # Input fields for ticker symbols
     tickers = []
@@ -172,7 +178,7 @@ if option == 'Altman Z Score':
         ticker = st.text_input(f'Ticker {i+1}', '')
         if ticker:
             tickers.append(ticker.upper())
-    
+
     # Dictionary to hold scores and components for each symbol
     symbol_to_data = {}
     distress = []
@@ -212,9 +218,9 @@ if option == 'Altman Z Score':
         df1.index.name = 'Symbol'
         df1 = df1.reset_index()
 
-        # Display Table 1
+        # Display Table 1 with custom formatter
         st.write("Raw Z-Score Data:")
-        st.dataframe(df1.style.format("{:.2f}"))
+        st.dataframe(df1.style.format(format_score))
 
         # Table 2: Styled Distress, Grey, Safe Zone table
         data_dict = {'Symbol': tickers, 'Distress Zone': distress, 'Grey Zone': grey, 'Safe Zone': safe}
