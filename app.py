@@ -175,6 +175,9 @@ if option == 'Altman Z Score':
     
     # Dictionary to hold scores and components for each symbol
     symbol_to_data = {}
+    distress = []
+    grey = []
+    safe = []
 
     # Calculate Z-Scores
     if st.button('Calculate Z-Scores'):
@@ -190,29 +193,62 @@ if option == 'Altman Z Score':
                 'X5': x5
             }
 
-        # Create DataFrame
-        df = pd.DataFrame.from_dict(symbol_to_data, orient='index')
-        df.index.name = 'Symbol'
-        df = df.reset_index()
+            # Classify Z-Scores for the styled table
+            if zscore <= 1.8:
+                distress.append(zscore)
+                grey.append(None)
+                safe.append(None)
+            elif 1.8 < zscore <= 2.99:
+                distress.append(None)
+                grey.append(zscore)
+                safe.append(None)
+            else:
+                distress.append(None)
+                grey.append(None)
+                safe.append(zscore)
+
+        # Table 1: X1, X2, X3, X4, X5
+        df1 = pd.DataFrame.from_dict(symbol_to_data, orient='index')
+        df1.index.name = 'Symbol'
+        df1 = df1.reset_index()
+
+        # Display Table 1
+        st.write("Raw Z-Score Data:")
+        st.dataframe(df1.style.format("{:.2f}"))
+
+        # Table 2: Styled Distress, Grey, Safe Zone table
+        data_dict = {'Symbol': tickers, 'Distress Zone': distress, 'Grey Zone': grey, 'Safe Zone': safe}
+        df2 = pd.DataFrame.from_dict(data_dict)
 
         # Apply styles to DataFrame
-        df_styled = df.style.pipe(make_pretty).set_caption('Altman Z Score')
+        styles = [
+            dict(selector='td', props=[('font-size', '10pt'), ('border-style', 'solid'), ('border-width', '1px')]),
+            dict(selector='th.col_heading', props=[('font-size', '11pt'), ('text-align', 'center')]),
+            dict(selector='caption', props=[('text-align', 'center'), ('font-size', '14pt'), ('font-weight', 'bold')])
+        ]
+
+        df_styled = df2.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
+
+        # Display Table 2
+        st.write("Styled Z-Score Classification:")
         st.dataframe(df_styled)
 
         # Export to Excel
         if st.button('Audit'):
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, sheet_name='Z-Scores', index=False)
+                df1.to_excel(writer, sheet_name='Z-Scores', index=False)
+                df2.to_excel(writer, sheet_name='Classifications', index=False)
                 workbook = writer.book
-                worksheet = writer.sheets['Z-Scores']
-                
-                # Add formatting
-                header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
+
+                # Add formatting for Z-Scores
+                zscore_worksheet = writer.sheets['Z-Scores']
                 cell_format = workbook.add_format({'border': 1})
-                for col_num, value in enumerate(df.columns.values):
-                    worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column('A:G', 15, cell_format)
+                zscore_worksheet.set_column('A:G', 15, cell_format)
+
+                # Add formatting for Classifications
+                class_worksheet = writer.sheets['Classifications']
+                class_worksheet.set_column('A:D', 15, cell_format)
 
             output.seek(0)
             st.download_button(
