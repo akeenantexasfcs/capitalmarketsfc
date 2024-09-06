@@ -76,21 +76,29 @@ def highlight_safe(val):
 def highlight_distress(val):
     return 'background-color: indianred' if not pd.isna(val) else ''
 
+# Updated make_pretty function with column existence checks
 def make_pretty(styler):
     # No index
     styler.hide(axis='index')
     
-    # Column formatting
-    styler.format(format_score, subset=['Distress Zone', 'Grey Zone', 'Safe Zone'])
+    # Check which columns exist before applying formatting
+    available_columns = set(styler.data.columns)
 
-    # Left text alignment for some columns
-    styler.set_properties(subset=['Symbol', 'Distress Zone', 'Grey Zone', 'Safe Zone'], **{'text-align': 'center', 'width': '100px'})
+    # Conditional formatting for existing columns
+    if {'Distress Zone', 'Grey Zone', 'Safe Zone'}.issubset(available_columns):
+        # Column formatting
+        styler.format(format_score, subset=['Distress Zone', 'Grey Zone', 'Safe Zone'])
+        
+        # Left text alignment for the specific columns
+        styler.set_properties(subset=['Symbol', 'Distress Zone', 'Grey Zone', 'Safe Zone'], **{'text-align': 'center', 'width': '100px'})
 
-    # Apply highlight methods to columns
-    styler.applymap(highlight_grey, subset=['Grey Zone'])
-    styler.applymap(highlight_safe, subset=['Safe Zone'])
-    styler.applymap(highlight_distress, subset=['Distress Zone'])
+        # Apply highlight methods to columns
+        styler.applymap(highlight_grey, subset=['Grey Zone'])
+        styler.applymap(highlight_safe, subset=['Safe Zone'])
+        styler.applymap(highlight_distress, subset=['Distress Zone'])
+    
     return styler
+
 
 # JSON Conversion Functionality
 def json_conversion():
