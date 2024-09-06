@@ -213,7 +213,7 @@ if option == 'Altman Z Score':
                 grey.append(None)
                 safe.append(zscore)
 
-        # Table 1: X1, X2, X3, X4, X5
+        # Table 1: X1, X2, X3, X4, X5 (Raw Z-Score Data)
         df1 = pd.DataFrame.from_dict(symbol_to_data, orient='index')
         df1.index.name = 'Symbol'
         df1 = df1.reset_index()
@@ -239,12 +239,11 @@ if option == 'Altman Z Score':
         st.write("Styled Z-Score Classification:")
         st.dataframe(df_styled)
 
-        # Export to Excel
+        # Export only the Raw Z-Score Data table (df1) to Excel
         if st.button('Audit'):
             output = BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df1.to_excel(writer, sheet_name='Z-Scores', index=False)
-                df2.to_excel(writer, sheet_name='Classifications', index=False)
                 workbook = writer.book
 
                 # Add formatting for Z-Scores
@@ -252,13 +251,9 @@ if option == 'Altman Z Score':
                 cell_format = workbook.add_format({'border': 1})
                 zscore_worksheet.set_column('A:G', 15, cell_format)
 
-                # Add formatting for Classifications
-                class_worksheet = writer.sheets['Classifications']
-                class_worksheet.set_column('A:D', 15, cell_format)
-
             output.seek(0)
             st.download_button(
-                label="Download Audit Excel file",
+                label="Download Z-Score Audit Excel file",
                 data=output.getvalue(),
                 file_name="z_score_audit.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
