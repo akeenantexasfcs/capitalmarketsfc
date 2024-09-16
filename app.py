@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[ ]:
 
 
 import streamlit as st
@@ -191,6 +191,21 @@ if 'loans' not in st.session_state:
     reset_defaults()
 
 # Loan Calculator Function
+import streamlit as st
+import pandas as pd
+from io import BytesIO
+
+# Initialize session state variables
+if 'current_loan_count' not in st.session_state:
+    st.session_state.current_loan_count = 1
+
+if 'loans' not in st.session_state:
+    st.session_state.loans = [{'Loan Type': 'TL', 'PD/LGD': '', 'Company Name': '', 'Eligibility': 'Directly Eligible', 
+                               'Patronage': 'Non-Patronage', 'Revolver': 'No', 'Unused Fee (%)': 0.00,
+                               'Direct Note Patronage (%)': 0.40, 'Fee in lieu (%)': 0.00, 'SPREAD (%)': 0.00,
+                               'CSA (%)': 0.00, 'SOFR (%)': 0.00, 'COFs (%)': 0.00, 'Upfront Fee (%)': 0.00,
+                               'Servicing Fee (%)': 0.15, 'Years to Maturity': 5.0} for _ in range(4)]
+
 def create_loan_calculator():
     st.title("Loan Pricing Calculator")
 
@@ -269,7 +284,7 @@ def create_loan_calculator():
             styled_df_main = df_main.style.apply(apply_main_table_styles, axis=1)
             styled_df_secondary = df_secondary.style.set_properties(**{'background-color': 'white', 'color': 'black'})
 
-# Display the styled DataFrame
+            # Display the styled DataFrame
             st.write("Pricing Information:")
             st.dataframe(styled_df_main)
             st.write("Details:")
@@ -280,24 +295,57 @@ def create_loan_calculator():
         if st.button("Add Another Loan"):
             st.session_state.current_loan_count += 1
 
-    # Export to Excel with space between tables
+    # Export to Excel with all information
     if st.button("Export to Excel"):
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             for i in range(st.session_state.current_loan_count):
-                df_main = pd.DataFrame.from_dict(st.session_state.loans[i], orient='index', columns=[f"{st.session_state.loans[i]['Loan Type']}"])
-                df_main.to_excel(writer, sheet_name=f'Loan {i + 1}', startrow=1, header=False)
+                loan_data = st.session_state.loans[i]
+                
+                # Calculate values
+                assoc_spread = loan_data['SPREAD (%)'] + loan_data['CSA (%)'] + loan_data['SOFR (%)'] - loan_data['COFs (%)']
+                patronage_value = 0.71 if loan_data['Patronage'] == "Patronage" else 0
+                income_yield = assoc_spread + loan_data['Direct Note Patronage (%)'] + (loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']) - loan_data['Servicing Fee (%)']
+                capital_yield = income_yield - patronage_value
 
-                # Write custom headers
-                worksheet = writer.sheets[f'Loan {i + 1}']
-                worksheet.write(0, 0, 'Component')
-                worksheet.write(0, 1, f"{st.session_state.loans[i]['Loan Type']}")
+                # Create DataFrame for main pricing information
+                data_main = {
+                    'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
+                    f"{loan_data['Loan Type']}": [f"{assoc_spread:.2f}%", f"-{patronage_value:.2f}%", f"{loan_data['Fee in lieu (%)']:.2f}%", f"-{loan_data['Servicing Fee (%)']:.2f}%", f"{loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']:.2f}%", f"{loan_data['Direct Note Patronage (%)']:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
+                }
+                df_main = pd.DataFrame(data_main)
+
+                # Create DataFrame for additional details
+                data_details = {
+                    'ID': ['Loan Type', 'PD/LGD', 'Company Name', 'Eligibility', 'Patronage', 'Revolver', 'Direct Note Patronage (%)', 'Fee in lieu (%)', 'SPREAD (%)', 'CSA (%)', 'SOFR (%)', 'COFs (%)', 'Upfront Fee (%)', 'Servicing Fee (%)', 'Years to Maturity', 'Unused Fee (%)'],
+                    'Value': [loan_data['Loan Type'], loan_data['PD/LGD'], loan_data['Company Name'], loan_data['Eligibility'], loan_data['Patronage'], loan_data['Revolver'], f"{loan_data['Direct Note Patronage (%)']:.2f}%", f"{loan_data['Fee in lieu (%)']:.2f}%", f"{loan_data['SPREAD (%)']:.2f}%", f"{loan_data['CSA (%)']:.2f}%", f"{loan_data['SOFR (%)']:.2f}%", f"{loan_data['COFs (%)']:.2f}%", f"{loan_data['Upfront Fee (%)']:.2f}%", f"{loan_data['Servicing Fee (%)']:.2f}%", f"{loan_data['Years to Maturity']:.1f} years", f"{loan_data['Unused Fee (%)']:.2f}%"]
+                }
+                df_details = pd.DataFrame(data_details)
+
+                # Write to Excel
+                df_main.to_excel(writer, sheet_name=f'Loan {i + 1}', startrow=1, index=False)
+                df_details.to_excel(writer, sheet_name=f'Loan {i + 1}', startrow=len(df_main) + 3, index=False)
 
                 # Add formatting
                 workbook = writer.book
+                worksheet = writer.sheets[f'Loan {i + 1}']
                 header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
                 cell_format = workbook.add_format({'border': 1})
+                
+                # Apply formatting to main pricing information
+                for col_num, value in enumerate(df_main.columns.values):
+                    worksheet.write(0, col_num, value, header_format)
                 worksheet.set_column('A:B', 20, cell_format)
+                
+                # Apply formatting to additional details
+                details_start_row = len(df_main) + 3
+                for col_num, value in enumerate(df_details.columns.values):
+                    worksheet.write(details_start_row - 1, col_num, value, header_format)
+                worksheet.set_column('C:D', 20, cell_format)
+
+                # Highlight Income Yield and Capital Yield
+                highlight_format = workbook.add_format({'bg_color': '#5e9732', 'font_color': 'white', 'bold': True})
+                worksheet.conditional_format(f'B{len(df_main)}:B{len(df_main)+1}', {'type': 'no_blanks', 'format': highlight_format})
 
         output.seek(0)
         st.download_button(
