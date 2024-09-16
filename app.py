@@ -190,7 +190,6 @@ if 'loans' not in st.session_state:
     initialize_defaults()
     reset_defaults()
 
-# Loan Calculator Function
 import streamlit as st
 import pandas as pd
 from io import BytesIO
@@ -265,7 +264,7 @@ def create_loan_calculator():
             patronage_value = 0.71 if loan_data['Patronage'] == "Patronage" else 0
             capital_yield = income_yield - patronage_value
 
-            # Create DataFrame for main components and a separate one for PD, Name, and Eligibility
+            # Create DataFrame for main components and a separate one for details
             data_main = {
                 'Component': ['Assoc Spread', 'Patronage', 'Fee in lieu', 'Servicing Fee', 'Upfront Fee', 'Direct Note Pat', 'Income Yield', 'Capital Yield'],
                 f"{loan_data['Loan Type']}": [f"{assoc_spread:.2f}%", f"-{patronage_value:.2f}%", f"{loan_data['Fee in lieu (%)']:.2f}%", f"-{loan_data['Servicing Fee (%)']:.2f}%", f"{loan_data['Upfront Fee (%)'] / loan_data['Years to Maturity']:.2f}%", f"{loan_data['Direct Note Patronage (%)']:.2f}%", f"{income_yield:.2f}%", f"{capital_yield:.2f}%"]
@@ -277,18 +276,11 @@ def create_loan_calculator():
             df_main = pd.DataFrame(data_main)
             df_secondary = pd.DataFrame(data_secondary)
 
-            # Styling for the main table
-            def apply_main_table_styles(row):
-                return ['background-color: rgb(94, 151, 50); color: white; font-weight: bold' if row['Component'] in ['Income Yield', 'Capital Yield'] else ''] * 2
-
-            styled_df_main = df_main.style.apply(apply_main_table_styles, axis=1)
-            styled_df_secondary = df_secondary.style.set_properties(**{'background-color': 'white', 'color': 'black'})
-
-            # Display the styled DataFrame
+            # Display the DataFrames
             st.write("Pricing Information:")
-            st.dataframe(styled_df_main)
+            st.dataframe(df_main)
             st.write("Details:")
-            st.dataframe(styled_df_secondary)
+            st.dataframe(df_secondary)
 
     # Add a new loan button if less than 4 loans
     if st.session_state.current_loan_count < 4:
@@ -326,26 +318,19 @@ def create_loan_calculator():
                 df_main.to_excel(writer, sheet_name=f'Loan {i + 1}', startrow=1, index=False)
                 df_details.to_excel(writer, sheet_name=f'Loan {i + 1}', startrow=len(df_main) + 3, index=False)
 
-                # Add formatting
+                # Add basic formatting
                 workbook = writer.book
                 worksheet = writer.sheets[f'Loan {i + 1}']
-                header_format = workbook.add_format({'bold': True, 'bg_color': '#f0f0f0', 'border': 1})
-                cell_format = workbook.add_format({'border': 1})
+                header_format = workbook.add_format({'bold': True})
                 
                 # Apply formatting to main pricing information
                 for col_num, value in enumerate(df_main.columns.values):
                     worksheet.write(0, col_num, value, header_format)
-                worksheet.set_column('A:B', 20, cell_format)
                 
                 # Apply formatting to additional details
                 details_start_row = len(df_main) + 3
                 for col_num, value in enumerate(df_details.columns.values):
                     worksheet.write(details_start_row - 1, col_num, value, header_format)
-                worksheet.set_column('C:D', 20, cell_format)
-
-                # Highlight Income Yield and Capital Yield
-                highlight_format = workbook.add_format({'bg_color': '#5e9732', 'font_color': 'white', 'bold': True})
-                worksheet.conditional_format(f'B{len(df_main)}:B{len(df_main)+1}', {'type': 'no_blanks', 'format': highlight_format})
 
         output.seek(0)
         st.download_button(
