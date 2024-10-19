@@ -48,16 +48,16 @@ def plot_sankey(ticker, report_type, year):
         
         # Prepare labels and values
         labels = [
-            f"Revenue\n${total_revenue/1e9:.1f}B",
-            f"Cost of Revenue\n${cost_of_revenue/1e9:.1f}B",
-            f"Gross Profit\n${gross_profit/1e9:.1f}B",
-            f"Operating Expense\n${operating_expense/1e9:.1f}B",
-            f"Operating Income\n${operating_income/1e9:.1f}B",
-            f"Net Income\n${net_income/1e9:.1f}B",
-            f"R&D\n${rnd/1e9:.1f}B",
-            f"SG&A\n${sga/1e9:.1f}B",
-            f"Other Expenses\n${other_expenses/1e9:.1f}B",
-            f"Tax\n${tax/1e9:.1f}B"
+            f"Revenue<br>${total_revenue/1e9:.1f}B",
+            f"Cost of Revenue<br>${cost_of_revenue/1e9:.1f}B",
+            f"Gross Profit<br>${gross_profit/1e9:.1f}B",
+            f"Operating Expense<br>${operating_expense/1e9:.1f}B",
+            f"Operating Income<br>${operating_income/1e9:.1f}B",
+            f"Net Income<br>${net_income/1e9:.1f}B",
+            f"R&D<br>${rnd/1e9:.1f}B",
+            f"SG&A<br>${sga/1e9:.1f}B",
+            f"Other Expenses<br>${other_expenses/1e9:.1f}B",
+            f"Tax<br>${tax/1e9:.1f}B"
         ]
         
         source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
@@ -88,11 +88,22 @@ def plot_sankey(ticker, report_type, year):
         # Update layout for better readability
         fig.update_layout(
             title_text=f"Financial Breakdown for {ticker} ({report_type} {year})",
-            font_size=12,
+            font=dict(size=16, color="black"),  # Increased font size and set to black
             paper_bgcolor='white',
             plot_bgcolor='white',
-            width=1000,
-            height=600
+            width=1200,  # Increased width
+            height=800   # Increased height
+        )
+
+        # Adjust node labels for better visibility
+        fig.update_traces(
+            node=dict(
+                pad=20,  # Increased padding
+                thickness=30,  # Increased thickness
+                line=dict(width=1, color="black"),
+                label=dict(font=dict(size=14, color="black"))  # Increased label font size
+            ),
+            selector=dict(type='sankey')
         )
 
         # Display the diagram
