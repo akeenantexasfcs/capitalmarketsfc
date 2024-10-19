@@ -49,22 +49,30 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         rnd = get_value_safely(financials, 'Research Development')
         sga = get_value_safely(financials, 'Selling General Administrative')
         
+        # Ensure no value exceeds total revenue
+        cost_of_revenue = min(cost_of_revenue, total_revenue)
+        gross_profit = max(0, total_revenue - cost_of_revenue)
+        operating_expense = min(operating_expense, gross_profit)
+        operating_income = max(0, gross_profit - operating_expense)
+        net_income = min(net_income, operating_income)
+        
         # Calculate other values
-        other_expenses = operating_expense - rnd - sga
+        other_expenses = operating_expense - min(rnd, operating_expense) - min(sga, operating_expense - rnd)
+        other_expenses = max(0, other_expenses)
         non_operating = net_income - operating_income
 
         # Prepare labels and values
         labels = [
-            f"Revenue<br>{format_value(total_revenue, unit)}",
-            f"Cost of Revenue<br>{format_value(cost_of_revenue, unit)}",
-            f"Gross Profit<br>{format_value(abs(gross_profit), unit)}",
-            f"Operating Expenses<br>{format_value(operating_expense, unit)}",
-            f"Operating {'Loss' if operating_income < 0 else 'Income'}<br>{format_value(abs(operating_income), unit)}",
-            f"Net {'Loss' if net_income < 0 else 'Income'}<br>{format_value(abs(net_income), unit)}",
-            f"R&D<br>{format_value(rnd, unit)}",
-            f"SG&A<br>{format_value(sga, unit)}",
-            f"Other Expenses<br>{format_value(other_expenses, unit)}",
-            f"Non-Operating<br>{format_value(abs(non_operating), unit)}"
+            f"Revenue\n{format_value(total_revenue, unit)}",
+            f"Cost of Revenue\n{format_value(cost_of_revenue, unit)}",
+            f"Gross Profit\n{format_value(gross_profit, unit)}",
+            f"Operating Expenses\n{format_value(operating_expense, unit)}",
+            f"Operating {'Loss' if operating_income < 0 else 'Income'}\n{format_value(abs(operating_income), unit)}",
+            f"Net {'Loss' if net_income < 0 else 'Income'}\n{format_value(abs(net_income), unit)}",
+            f"R&D\n{format_value(rnd, unit)}",
+            f"SG&A\n{format_value(sga, unit)}",
+            f"Other Expenses\n{format_value(other_expenses, unit)}",
+            f"Non-Operating\n{format_value(abs(non_operating), unit)}"
         ]
         
         # Handle profitable vs unprofitable cases
@@ -111,7 +119,7 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         title += f" Q{quarter}" if report_type == 'Quarterly' else ")"
         fig.update_layout(
             title_text=title,
-            font=dict(size=10, color="black"),
+            font=dict(size=14, color="black"),
             paper_bgcolor='white',
             plot_bgcolor='white'
         )
