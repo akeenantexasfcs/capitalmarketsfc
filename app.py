@@ -27,7 +27,6 @@ def format_value(value, unit):
 
 def plot_sankey(ticker, report_type, year, quarter, unit):
     try:
-        st.write(f"Fetching data for {ticker}...")
         stock = yf.Ticker(ticker)
         
         if report_type == 'Annual':
@@ -41,7 +40,6 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
             st.error(f"No financial data available for {ticker} in the selected period")
             return
 
-        st.write("Processing financial data...")
         # Retrieve values safely
         total_revenue = get_value_safely(financials, 'Total Revenue')
         cost_of_revenue = get_value_safely(financials, 'Cost Of Revenue')
@@ -54,34 +52,41 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         
         # Calculate other values
         other_expenses = operating_expense - rnd - sga
-        non_operating = net_income - operating_income
-
-        st.write("Preparing Sankey diagram data...")
+        interest_expense = get_value_safely(financials, 'Interest Expense')
+        
         # Prepare labels and values
         labels = [
             f"Revenue<br>{format_value(total_revenue, unit)}",
             f"Cost of Revenue<br>{format_value(cost_of_revenue, unit)}",
             f"Gross Profit<br>{format_value(gross_profit, unit)}",
-            f"Operating Expense<br>{format_value(operating_expense, unit)}",
-            f"Operating Income<br>{format_value(operating_income, unit)}",
-            f"Net Income<br>{format_value(net_income, unit)}",
+            f"Operating Expenses<br>{format_value(operating_expense, unit)}",
+            f"Operating Income<br>{format_value(abs(operating_income), unit)}",
+            f"Net Income<br>{format_value(abs(net_income), unit)}",
             f"R&D<br>{format_value(rnd, unit)}",
             f"SG&A<br>{format_value(sga, unit)}",
             f"Other Expenses<br>{format_value(other_expenses, unit)}",
-            f"Non-Operating<br>{format_value(non_operating, unit)}"
+            f"Interest Expense<br>{format_value(interest_expense, unit)}"
         ]
         
-        source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
-        target = [2, 1, 4, 3, 5, 6, 7, 8, 9]
-        values = [
-            gross_profit, cost_of_revenue, operating_income, operating_expense, 
-            net_income, rnd, sga, other_expenses, non_operating
-        ]
+        # Handle unprofitable case
+        if operating_income < 0:
+            source = [0, 0, 2, 3, 3, 3, 4, 4]
+            target = [2, 1, 3, 6, 7, 8, 5, 9]
+            values = [
+                gross_profit, cost_of_revenue, operating_expense, 
+                rnd, sga, other_expenses, abs(net_income), interest_expense
+            ]
+        else:
+            source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
+            target = [2, 1, 4, 3, 5, 6, 7, 8, 9]
+            values = [
+                gross_profit, cost_of_revenue, operating_income, operating_expense, 
+                abs(net_income), rnd, sga, other_expenses, interest_expense
+            ]
         
         # Ensure all values are positive for Sankey diagram
         values = [abs(v) for v in values]
         
-        st.write("Creating Sankey diagram...")
         # Create the Sankey Diagram
         fig = go.Figure(data=[go.Sankey(
             node=dict(
@@ -112,23 +117,11 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
             height=800
         )
 
-        # Update node properties for better visibility
-        fig.update_traces(
-            node=dict(
-                pad=20,
-                thickness=30,
-                line=dict(color="black", width=1),
-            ),
-            selector=dict(type='sankey')
-        )
-
-        st.write("Displaying Sankey diagram...")
         # Display the diagram
         st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
-        st.error(f"An error occurred while plotting the Sankey diagram: {str(e)}")
-        st.exception(e)
+        st.error(f"An error occurred: {str(e)}")
 
 # Streamlit app section
 st.title('Financial Breakdown Sankey Diagram')
