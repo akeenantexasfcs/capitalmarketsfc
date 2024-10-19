@@ -13,8 +13,8 @@ from datetime import datetime
 def get_value_safely(df, key):
     try:
         return df.loc[key].iloc[0] if key in df.index else 0
-    except Exception:
-        st.warning(f"Unable to retrieve {key}. Using 0 instead.")
+    except Exception as e:
+        st.warning(f"Unable to retrieve {key}. Using 0 instead. Error: {str(e)}")
         return 0
 
 def format_value(value, unit):
@@ -27,6 +27,7 @@ def format_value(value, unit):
 
 def plot_sankey(ticker, report_type, year, quarter, unit):
     try:
+        st.write(f"Fetching data for {ticker}...")
         stock = yf.Ticker(ticker)
         
         if report_type == 'Annual':
@@ -40,6 +41,7 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
             st.error(f"No financial data available for {ticker} in the selected period")
             return
 
+        st.write("Processing financial data...")
         # Retrieve values safely
         total_revenue = get_value_safely(financials, 'Total Revenue')
         cost_of_revenue = get_value_safely(financials, 'Cost Of Revenue')
@@ -54,6 +56,7 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         other_expenses = operating_expense - rnd - sga
         non_operating = net_income - operating_income
 
+        st.write("Preparing Sankey diagram data...")
         # Prepare labels and values
         labels = [
             f"Revenue<br>{format_value(total_revenue, unit)}",
@@ -78,6 +81,7 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         # Ensure all values are positive for Sankey diagram
         values = [abs(v) for v in values]
         
+        st.write("Creating Sankey diagram...")
         # Create the Sankey Diagram
         fig = go.Figure(data=[go.Sankey(
             node=dict(
@@ -111,18 +115,53 @@ def plot_sankey(ticker, report_type, year, quarter, unit):
         # Update node properties for better visibility
         fig.update_traces(
             node=dict(
-                pad=15,
-                thickness=25,
+                pad=20,
+                thickness=30,
                 line=dict(color="black", width=1),
             ),
             selector=dict(type='sankey')
         )
 
+        st.write("Displaying Sankey diagram...")
         # Display the diagram
         st.plotly_chart(fig, use_container_width=True)
 
     except Exception as e:
         st.error(f"An error occurred while plotting the Sankey diagram: {str(e)}")
+        st.exception(e)
 
-# The rest of the Streamlit app code remains the same
+# Streamlit app section
+st.title('Financial Breakdown Sankey Diagram')
+
+# User input for stock ticker
+ticker = st.text_input('Enter Stock Ticker (e.g., AAPL, MSFT, GOOGL):', 'AAPL')
+
+# Select report type
+report_type = st.selectbox('Select Report Type', ['Annual', 'Quarterly'])
+
+# Get current year and quarter
+current_year = datetime.now().year
+current_quarter = (datetime.now().month - 1) // 3 + 1
+
+# Select year
+year = st.selectbox('Select Year', range(current_year, current_year-5, -1))
+
+quarter = None
+if report_type == 'Quarterly':
+    # Select quarter for quarterly reports
+    quarter = st.selectbox('Select Quarter', [1, 2, 3, 4], index=current_quarter-1)
+
+# Select unit for financial figures
+unit = st.selectbox('Select Unit', ['Billions', 'Millions', 'Thousands'])
+
+if st.button('Generate Sankey Diagram'):
+    st.write("Button clicked! Generating Sankey Diagram...")
+    try:
+        plot_sankey(ticker, report_type, year, quarter, unit)
+        st.success("Sankey diagram generated successfully!")
+    except Exception as e:
+        st.error(f"An error occurred: {str(e)}")
+        st.exception(e)
+
+st.write("App is running. If you can see this, Streamlit is working correctly.")
 
