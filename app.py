@@ -105,7 +105,7 @@ def make_pretty(styler):
 def plot_sankey(income_statement):
     try:
         # Validate that all required keys are present in income_statement
-        required_keys = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
+        required_keys = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Operating Expenses', 'Operating Income', 'Net Income']
         for key in required_keys:
             if key not in income_statement or pd.isna(income_statement[key]):
                 st.error(f'Missing or invalid data for {key}')
@@ -116,7 +116,7 @@ def plot_sankey(income_statement):
             f"Revenue ${income_statement['Total Revenue']}",
             f"Cost of Revenue(-${income_statement['Cost Of Revenue']})",
             f"Gross Profit ${income_statement['Gross Profit']}",
-            f"Operating Expenses(-${income_statement['Total Operating Expenses']})",
+            f"Operating Expenses(-${income_statement['Operating Expenses']})",
             f"Operating Profit ${income_statement['Operating Income']}",
             f"Net Income ${income_statement['Net Income']}",
         ]
@@ -126,7 +126,7 @@ def plot_sankey(income_statement):
         values = [
             income_statement['Total Revenue'],
             income_statement['Cost Of Revenue'],
-            income_statement['Total Operating Expenses'],
+            income_statement['Operating Expenses'],
             income_statement['Operating Income']
         ]
         
@@ -191,7 +191,7 @@ if option == 'Sankey Trial':
             if not income_data.empty:
                 # Convert the data to more usable format
                 income_statement = {}
-                columns_needed = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
+                columns_needed = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Operating Expenses', 'Operating Income', 'Net Income']
                 for column in columns_needed:
                     if column in income_data.index:
                         income_statement[column] = income_data.loc[column].max()
