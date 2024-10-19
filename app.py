@@ -8,6 +8,7 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
+from datetime import datetime
 
 def get_value_safely(df, key):
     try:
