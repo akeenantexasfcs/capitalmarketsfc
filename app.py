@@ -8,7 +8,6 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
-import numpy as np
 
 def get_value_safely(df, key):
     try:
@@ -17,48 +16,55 @@ def get_value_safely(df, key):
         st.warning(f"Unable to retrieve {key}. Using 0 instead.")
         return 0
 
-def plot_sankey(ticker):
+def plot_sankey(ticker, report_type, year):
     try:
         stock = yf.Ticker(ticker)
-        income_statement = stock.financials
         
+        if report_type == 'Annual':
+            financials = stock.financials
+        else:  # Quarterly
+            financials = stock.quarterly_financials
+        
+        # Filter for the selected year
+        financials = financials.loc[:, financials.columns.year == year]
+        
+        if financials.empty:
+            st.error(f"No financial data available for {ticker} in {year}")
+            return
+
         # Retrieve values safely
-        total_revenue = get_value_safely(income_statement, 'Total Revenue')
-        cost_of_revenue = get_value_safely(income_statement, 'Cost Of Revenue')
-        gross_profit = get_value_safely(income_statement, 'Gross Profit')
-        operating_expenses = get_value_safely(income_statement, 'Total Operating Expenses')
-        operating_income = get_value_safely(income_statement, 'Operating Income')
-        net_income = get_value_safely(income_statement, 'Net Income')
+        total_revenue = get_value_safely(financials, 'Total Revenue')
+        cost_of_revenue = get_value_safely(financials, 'Cost Of Revenue')
+        gross_profit = get_value_safely(financials, 'Gross Profit')
+        operating_expenses = get_value_safely(financials, 'Total Operating Expenses')
+        operating_income = get_value_safely(financials, 'Operating Income')
+        net_income = get_value_safely(financials, 'Net Income')
+        rnd = get_value_safely(financials, 'Research And Development')
+        sga = get_value_safely(financials, 'Selling General And Administration')
         
-        # Additional breakdowns
-        product_costs = cost_of_revenue * 0.9  # Estimate
-        service_costs = cost_of_revenue * 0.1  # Estimate
-        rnd = get_value_safely(income_statement, 'Research And Development')
-        sga = get_value_safely(income_statement, 'Selling General And Administration')
+        # Calculate other values
         other_expenses = operating_expenses - rnd - sga
-        tax = get_value_safely(income_statement, 'Tax Provision')
+        tax = get_value_safely(financials, 'Tax Provision')
         
         # Prepare labels and values
-        label = [
-            f"Revenue ${total_revenue/1e9:.1f}B",
-            f"Cost of revenue ${cost_of_revenue/1e9:.1f}B",
-            f"Gross profit ${gross_profit/1e9:.1f}B",
-            f"Operating expenses ${operating_expenses/1e9:.1f}B",
-            f"Operating profit ${operating_income/1e9:.1f}B",
-            f"Net profit ${net_income/1e9:.1f}B",
-            f"Product costs ${product_costs/1e9:.1f}B",
-            f"Service costs ${service_costs/1e9:.1f}B",
-            f"R&D ${rnd/1e9:.1f}B",
-            f"SG&A ${sga/1e9:.1f}B",
-            f"Other ${other_expenses/1e9:.1f}B",
-            f"Tax ${tax/1e9:.1f}B"
+        labels = [
+            f"Revenue\n${total_revenue/1e9:.1f}B",
+            f"Cost of Revenue\n${cost_of_revenue/1e9:.1f}B",
+            f"Gross Profit\n${gross_profit/1e9:.1f}B",
+            f"Operating Expenses\n${operating_expenses/1e9:.1f}B",
+            f"Operating Income\n${operating_income/1e9:.1f}B",
+            f"Net Income\n${net_income/1e9:.1f}B",
+            f"R&D\n${rnd/1e9:.1f}B",
+            f"SG&A\n${sga/1e9:.1f}B",
+            f"Other Expenses\n${other_expenses/1e9:.1f}B",
+            f"Tax\n${tax/1e9:.1f}B"
         ]
         
-        source = [0, 0, 2, 2, 4, 1, 1, 3, 3, 3, 4]
-        target = [2, 1, 4, 3, 5, 6, 7, 8, 9, 10, 11]
+        source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
+        target = [2, 1, 4, 3, 5, 6, 7, 8, 9]
         values = [
-            gross_profit, cost_of_revenue, operating_income, operating_expenses, net_income,
-            product_costs, service_costs, rnd, sga, other_expenses, tax
+            gross_profit, cost_of_revenue, operating_income, operating_expenses, 
+            net_income, rnd, sga, other_expenses, tax
         ]
         
         # Create the Sankey Diagram
@@ -67,24 +73,26 @@ def plot_sankey(ticker):
               pad=15,
               thickness=20,
               line=dict(color="black", width=0.5),
-              label=label,
-              color=["gray", "pink", "lightgreen", "pink", "green", "darkgreen", 
-                     "red", "red", "red", "red", "red", "red"]
+              label=labels,
+              color=["#87CEEB", "#FFB6C1", "#98FB98", "#FFB6C1", "#32CD32", "#006400", 
+                     "#FF69B4", "#FF69B4", "#FF69B4", "#FF0000"]
             ),
             link=dict(
               source=source,
               target=target,
               value=values,
-              color=["lightgray", "pink", "lightgreen", "pink", "green", 
-                     "pink", "pink", "pink", "pink", "pink", "red"]
+              color=["#98FB98", "#FFB6C1", "#32CD32", "#FFB6C1", "#006400", 
+                     "#FF69B4", "#FF69B4", "#FF69B4", "#FF0000"]
           ))])
 
-        # Update layout
+        # Update layout for better readability
         fig.update_layout(
-            title_text=f"Financial Breakdown for {ticker}",
-            font_size=10,
+            title_text=f"Financial Breakdown for {ticker} ({report_type} {year})",
+            font_size=12,
             paper_bgcolor='white',
-            plot_bgcolor='white'
+            plot_bgcolor='white',
+            width=1000,
+            height=600
         )
 
         # Display the diagram
@@ -99,6 +107,13 @@ st.title('Financial Breakdown Sankey Diagram')
 # User input for stock ticker
 ticker = st.text_input('Enter Stock Ticker (e.g., AAPL, MSFT, GOOGL):', 'AAPL')
 
+# Select report type
+report_type = st.selectbox('Select Report Type', ['Annual', 'Quarterly'])
+
+# Select year
+current_year = pd.Timestamp.now().year
+year = st.selectbox('Select Year', range(current_year, current_year-5, -1))
+
 if st.button('Generate Sankey Diagram'):
-    plot_sankey(ticker)
+    plot_sankey(ticker, report_type, year)
 
