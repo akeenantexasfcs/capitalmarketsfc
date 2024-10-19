@@ -70,9 +70,9 @@ def plot_sankey(ticker, report_type, year):
         # Create the Sankey Diagram
         fig = go.Figure(data=[go.Sankey(
             node=dict(
-              pad=15,
-              thickness=20,
-              line=dict(color="black", width=0.5),
+              pad=20,
+              thickness=30,
+              line=dict(color="black", width=1),
               label=labels,
               color=["#87CEEB", "#FFB6C1", "#98FB98", "#FFB6C1", "#32CD32", "#006400", 
                      "#FF69B4", "#FF69B4", "#FF69B4", "#FF0000"]
@@ -88,20 +88,17 @@ def plot_sankey(ticker, report_type, year):
         # Update layout for better readability
         fig.update_layout(
             title_text=f"Financial Breakdown for {ticker} ({report_type} {year})",
-            font=dict(size=16, color="black"),  # Increased font size and set to black
+            font=dict(size=16, color="black"),
             paper_bgcolor='white',
             plot_bgcolor='white',
-            width=1200,  # Increased width
-            height=800   # Increased height
+            width=1200,
+            height=800
         )
 
-        # Adjust node labels for better visibility
+        # Update node label font size and color
         fig.update_traces(
             node=dict(
-                pad=20,  # Increased padding
-                thickness=30,  # Increased thickness
-                line=dict(width=1, color="black"),
-                label=dict(font=dict(size=14, color="black"))  # Increased label font size
+                label=dict(font=dict(size=14, color="black"))
             ),
             selector=dict(type='sankey')
         )
