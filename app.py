@@ -36,14 +36,14 @@ def plot_sankey(ticker, report_type, year):
         total_revenue = get_value_safely(financials, 'Total Revenue')
         cost_of_revenue = get_value_safely(financials, 'Cost Of Revenue')
         gross_profit = get_value_safely(financials, 'Gross Profit')
-        operating_expenses = get_value_safely(financials, 'Total Operating Expenses')
+        operating_expense = get_value_safely(financials, 'Operating Expense')
         operating_income = get_value_safely(financials, 'Operating Income')
         net_income = get_value_safely(financials, 'Net Income')
         rnd = get_value_safely(financials, 'Research And Development')
         sga = get_value_safely(financials, 'Selling General And Administration')
         
         # Calculate other values
-        other_expenses = operating_expenses - rnd - sga
+        other_expenses = operating_expense - rnd - sga
         tax = get_value_safely(financials, 'Tax Provision')
         
         # Prepare labels and values
@@ -51,7 +51,7 @@ def plot_sankey(ticker, report_type, year):
             f"Revenue\n${total_revenue/1e9:.1f}B",
             f"Cost of Revenue\n${cost_of_revenue/1e9:.1f}B",
             f"Gross Profit\n${gross_profit/1e9:.1f}B",
-            f"Operating Expenses\n${operating_expenses/1e9:.1f}B",
+            f"Operating Expense\n${operating_expense/1e9:.1f}B",
             f"Operating Income\n${operating_income/1e9:.1f}B",
             f"Net Income\n${net_income/1e9:.1f}B",
             f"R&D\n${rnd/1e9:.1f}B",
@@ -63,7 +63,7 @@ def plot_sankey(ticker, report_type, year):
         source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
         target = [2, 1, 4, 3, 5, 6, 7, 8, 9]
         values = [
-            gross_profit, cost_of_revenue, operating_income, operating_expenses, 
+            gross_profit, cost_of_revenue, operating_income, operating_expense, 
             net_income, rnd, sga, other_expenses, tax
         ]
         
