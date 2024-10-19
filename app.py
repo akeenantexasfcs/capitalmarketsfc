@@ -17,17 +17,23 @@ def get_value_safely(df, key):
         st.warning(f"Unable to retrieve {key}. Using 0 instead.")
         return 0
 
-def plot_sankey(ticker, report_type, year, quarter=None):
+def format_value(value, unit):
+    if unit == 'Billions':
+        return f"${value/1e9:.1f}B"
+    elif unit == 'Millions':
+        return f"${value/1e6:.1f}M"
+    else:  # Thousands
+        return f"${value/1e3:.1f}K"
+
+def plot_sankey(ticker, report_type, year, quarter, unit):
     try:
         stock = yf.Ticker(ticker)
         
         if report_type == 'Annual':
             financials = stock.financials
-            # Filter for the selected year
             financials = financials.loc[:, financials.columns.year == year]
         else:  # Quarterly
             financials = stock.quarterly_financials
-            # Filter for the selected year and quarter
             financials = financials.loc[:, (financials.columns.year == year) & (financials.columns.quarter == quarter)]
         
         if financials.empty:
@@ -50,16 +56,16 @@ def plot_sankey(ticker, report_type, year, quarter=None):
         
         # Prepare labels and values
         labels = [
-            f"Revenue<br>${total_revenue/1e9:.1f}B",
-            f"Cost of Revenue<br>${cost_of_revenue/1e9:.1f}B",
-            f"Gross Profit<br>${gross_profit/1e9:.1f}B",
-            f"Operating Expense<br>${operating_expense/1e9:.1f}B",
-            f"Operating Income<br>${operating_income/1e9:.1f}B",
-            f"Net Income<br>${net_income/1e9:.1f}B",
-            f"R&D<br>${rnd/1e9:.1f}B",
-            f"SG&A<br>${sga/1e9:.1f}B",
-            f"Other Expenses<br>${other_expenses/1e9:.1f}B",
-            f"Tax<br>${tax/1e9:.1f}B"
+            f"Revenue<br>{format_value(total_revenue, unit)}",
+            f"Cost of Revenue<br>{format_value(cost_of_revenue, unit)}",
+            f"Gross Profit<br>{format_value(gross_profit, unit)}",
+            f"Operating Expense<br>{format_value(operating_expense, unit)}",
+            f"Operating Income<br>{format_value(operating_income, unit)}",
+            f"Net Income<br>{format_value(net_income, unit)}",
+            f"R&D<br>{format_value(rnd, unit)}",
+            f"SG&A<br>{format_value(sga, unit)}",
+            f"Other Expenses<br>{format_value(other_expenses, unit)}",
+            f"Tax<br>{format_value(tax, unit)}"
         ]
         
         source = [0, 0, 2, 2, 4, 3, 3, 3, 4]
@@ -136,6 +142,9 @@ if report_type == 'Quarterly':
     # Select quarter for quarterly reports
     quarter = st.selectbox('Select Quarter', [1, 2, 3, 4], index=current_quarter-1)
 
+# Select unit for financial figures
+unit = st.selectbox('Select Unit', ['Billions', 'Millions', 'Thousands'])
+
 if st.button('Generate Sankey Diagram'):
-    plot_sankey(ticker, report_type, year, quarter)
+    plot_sankey(ticker, report_type, year, quarter, unit)
 
