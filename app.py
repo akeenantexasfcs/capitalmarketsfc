@@ -9,299 +9,96 @@ import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
-import json
-from io import BytesIO
-import re
 
-# Function to get futures data
-def get_futures_data(ticker_symbol, start_date, end_date):
-    ticker_data = yf.Ticker(ticker_symbol)
-    ticker_df = ticker_data.history(period='1d', start=start_date, end=end_date)
-    return ticker_df
-
-# Altman Z-Score Calculation Functions
-def ratio_x_1(ticker):
-    df = ticker.balance_sheet
-    working_capital = df.loc['Current Assets'].iloc[0] - df.loc['Current Liabilities'].iloc[0]
-    total_assets = df.loc['Total Assets'].iloc[0]
-    return working_capital / total_assets
-
-def ratio_x_2(ticker):
-    df = ticker.balance_sheet
-    retained_earnings = df.loc['Retained Earnings'].iloc[0]
-    total_assets = df.loc['Total Assets'].iloc[0]
-    return retained_earnings / total_assets
-
-def ratio_x_3(ticker):
-    df = ticker.financials
-    ebit = df.loc['EBIT'].iloc[0]
-    total_assets = ticker.balance_sheet.loc['Total Assets'].iloc[0]
-    return ebit / total_assets
-
-def ratio_x_4(ticker):
-    equity_market_value = ticker.info['sharesOutstanding'] * ticker.info['currentPrice']
-    total_liabilities = ticker.balance_sheet.loc['Total Liabilities Net Minority Interest'].iloc[0]
-    return equity_market_value / total_liabilities
-
-def ratio_x_5(ticker):
-    df = ticker.financials
-    sales = df.loc['Total Revenue'].iloc[0]
-    total_assets = ticker.balance_sheet.loc['Total Assets'].iloc[0]
-    return sales / total_assets
-
-def z_score(ticker):
+def get_value_safely(df, key):
     try:
-        x1 = ratio_x_1(ticker)
-        x2 = ratio_x_2(ticker)
-        x3 = ratio_x_3(ticker)
-        x4 = ratio_x_4(ticker)
-        x5 = ratio_x_5(ticker)
-        zscore = 1.2 * x1 + 1.4 * x2 + 3.3 * x3 + 0.6 * x4 + 1.0 * x5
-        return zscore, x1, x2, x3, x4, x5
-    except Exception as e:
-        return np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
+        return df.loc[key].iloc[0] if key in df.index else 0
+    except Exception:
+        st.warning(f"Unable to retrieve {key}. Using 0 instead.")
+        return 0
 
-# Custom formatter that checks for numeric values
-def format_score(val):
+def plot_sankey(ticker):
     try:
-        return '{:.2f}'.format(float(val))
-    except (ValueError, TypeError):
-        return val
-
-# Styling for Altman Z Score table
-def highlight_grey(val):
-    return 'background-color: grey' if not pd.isna(val) else ''
-
-def highlight_safe(val):
-    return 'background-color: green' if not pd.isna(val) else ''
-
-def highlight_distress(val):
-    return 'background-color: indianred' if not pd.isna(val) else ''
-
-# Updated make_pretty function with column existence checks
-def make_pretty(styler):
-    # No index
-    styler.hide(axis='index')
-    
-    # Check which columns exist before applying formatting
-    available_columns = set(styler.data.columns)
-
-    # Conditional formatting for existing columns
-    if {'Distress Zone', 'Grey Zone', 'Safe Zone'}.issubset(available_columns):
-        # Column formatting
-        styler.format(format_score, subset=['Distress Zone', 'Grey Zone', 'Safe Zone'])
+        stock = yf.Ticker(ticker)
+        income_statement = stock.financials
         
-        # Left text alignment for the specific columns
-        styler.set_properties(subset=['Symbol', 'Distress Zone', 'Grey Zone', 'Safe Zone'], **{'text-align': 'center', 'width': '100px'})
-
-        # Apply highlight methods to columns
-        styler.applymap(highlight_grey, subset=['Grey Zone'])
-        styler.applymap(highlight_safe, subset=['Safe Zone'])
-        styler.applymap(highlight_distress, subset=['Distress Zone'])
-    
-    return styler
-
-# Define a function to generate the Sankey diagram
-def plot_sankey(income_statement):
-    try:
-        # Validate that all required keys are present in income_statement
-        required_keys = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
-        for key in required_keys:
-            if key not in income_statement or pd.isna(income_statement[key]):
-                st.warning(f'Missing or invalid data for {key}. Defaulting to 0.')
-                income_statement[key] = 0
-
-        # Convert values to thousands
-        for key in income_statement:
-            income_statement[key] = income_statement[key] / 1000
-
-        # Prepare labels and values from the income statement
+        # Retrieve values safely
+        total_revenue = get_value_safely(income_statement, 'Total Revenue')
+        cost_of_revenue = get_value_safely(income_statement, 'Cost Of Revenue')
+        gross_profit = get_value_safely(income_statement, 'Gross Profit')
+        operating_expenses = get_value_safely(income_statement, 'Total Operating Expenses')
+        operating_income = get_value_safely(income_statement, 'Operating Income')
+        net_income = get_value_safely(income_statement, 'Net Income')
+        
+        # Additional breakdowns
+        product_costs = cost_of_revenue * 0.9  # Estimate
+        service_costs = cost_of_revenue * 0.1  # Estimate
+        rnd = get_value_safely(income_statement, 'Research And Development')
+        sga = get_value_safely(income_statement, 'Selling General And Administration')
+        other_expenses = operating_expenses - rnd - sga
+        tax = get_value_safely(income_statement, 'Tax Provision')
+        
+        # Prepare labels and values
         label = [
-            f"Revenue ${income_statement['Total Revenue']:,.0f}K",
-            f"Cost of Revenue(-${income_statement['Cost Of Revenue']:,.0f}K)",
-            f"Gross Profit ${income_statement['Gross Profit']:,.0f}K",
-            f"Operating Expenses(-${income_statement['Total Operating Expenses']:,.0f}K)",
-            f"Operating Profit ${income_statement['Operating Income']:,.0f}K",
-            f"Net Income ${income_statement['Net Income']:,.0f}K",
+            f"Revenue ${total_revenue/1e9:.1f}B",
+            f"Cost of revenue ${cost_of_revenue/1e9:.1f}B",
+            f"Gross profit ${gross_profit/1e9:.1f}B",
+            f"Operating expenses ${operating_expenses/1e9:.1f}B",
+            f"Operating profit ${operating_income/1e9:.1f}B",
+            f"Net profit ${net_income/1e9:.1f}B",
+            f"Product costs ${product_costs/1e9:.1f}B",
+            f"Service costs ${service_costs/1e9:.1f}B",
+            f"R&D ${rnd/1e9:.1f}B",
+            f"SG&A ${sga/1e9:.1f}B",
+            f"Other ${other_expenses/1e9:.1f}B",
+            f"Tax ${tax/1e9:.1f}B"
         ]
         
-        source = [0, 2, 2, 4]
-        target = [2, 3, 4, 5]
+        source = [0, 0, 2, 2, 4, 1, 1, 3, 3, 3, 4]
+        target = [2, 1, 4, 3, 5, 6, 7, 8, 9, 10, 11]
         values = [
-            income_statement['Total Revenue'],
-            income_statement['Cost Of Revenue'],
-            income_statement['Total Operating Expenses'],
-            income_statement['Operating Income']
+            gross_profit, cost_of_revenue, operating_income, operating_expenses, net_income,
+            product_costs, service_costs, rnd, sga, other_expenses, tax
         ]
         
-        # Create the Sankey Diagram using Plotly
+        # Create the Sankey Diagram
         fig = go.Figure(data=[go.Sankey(
             node=dict(
-                pad=30,
-                thickness=30,
-                line=dict(color="white", width=0),
-                label=label,
-                color=["#49a2eb", "#BC271B", '#519E3F', '#BC271B', '#519E3F', '#519E3F']
+              pad=15,
+              thickness=20,
+              line=dict(color="black", width=0.5),
+              label=label,
+              color=["gray", "pink", "lightgreen", "pink", "green", "darkgreen", 
+                     "red", "red", "red", "red", "red", "red"]
             ),
             link=dict(
-                source=source,
-                target=target,
-                value=values,
-                color=["#96cded", "#D58A87", "#D58A87", "#A4CC9E"]
-            )
-        )])
+              source=source,
+              target=target,
+              value=values,
+              color=["lightgray", "pink", "lightgreen", "pink", "green", 
+                     "pink", "pink", "pink", "pink", "pink", "red"]
+          ))])
 
-        # Add title to the diagram
+        # Update layout
         fig.update_layout(
-            title={
-                'text': 'Income Statement Sankey Diagram',
-                'y': 0.95, 'x': 0.5,
-                'xanchor': 'center',
-                'yanchor': 'top',
-                'font_size': 24
-            },
-            paper_bgcolor='rgb(248,248,255)',
-            plot_bgcolor='rgb(248,248,255)',
-            font=dict(size=14)
+            title_text=f"Financial Breakdown for {ticker}",
+            font_size=10,
+            paper_bgcolor='white',
+            plot_bgcolor='white'
         )
-        
-        st.plotly_chart(fig)
+
+        # Display the diagram
+        st.plotly_chart(fig, use_container_width=True)
+
     except Exception as e:
-        st.error(f"An error occurred while plotting Sankey: {str(e)}")
+        st.error(f"An error occurred while plotting the Sankey diagram: {str(e)}")
 
-# Streamlit app
-st.sidebar.title('Navigation')
-option = st.sidebar.radio('Select a section:', ['Sankey Trial', 'Altman Z Score', 'Futures Pricing', 'Other Sections'])
+# Streamlit app section
+st.title('Financial Breakdown Sankey Diagram')
 
-if option == 'Sankey Trial':
-    st.title('Income Statement Sankey Diagram Generator')
+# User input for stock ticker
+ticker = st.text_input('Enter Stock Ticker (e.g., AAPL, MSFT, GOOGL):', 'AAPL')
 
-    # User selects a stock ticker
-    ticker = st.text_input('Enter Stock Ticker (e.g., AAPL, MSFT, META):', key='sankey_ticker')
-
-    # User selects a financial period
-    period = st.selectbox('Select Financial Period:', ['Quarterly', 'Yearly'], key='sankey_period')
-
-    # When user presses button
-    if st.button('Generate Sankey Diagram', key='sankey_button'):
-        if ticker:
-            # Fetch data from Yahoo Finance
-            stock = yf.Ticker(ticker)
-            
-            if period == 'Quarterly':
-                income_data = stock.quarterly_financials
-            else:
-                income_data = stock.financials
-
-            if not income_data.empty:
-                # Convert the data to more usable format
-                income_statement = {}
-                columns_needed = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
-                for column in columns_needed:
-                    if column in income_data.index:
-                        income_statement[column] = income_data.loc[column].max()
-                    else:
-                        st.warning(f'{column} not found for the selected stock. Defaulting to 0.')
-                        income_statement[column] = 0
-                
-                # Plot Sankey Diagram
-                plot_sankey(income_statement)
-            else:
-                st.error('Unable to retrieve financial data for the selected stock.')
-        else:
-            st.warning('Please enter a valid stock ticker.')
-
-elif option == 'Altman Z Score':
-    st.title('Altman Z-Score Calculator')
-    
-    # Define the number of input slots
-    NUM_INPUTS = 4
-    
-    # Input fields for ticker symbols
-    tickers = []
-    for i in range(NUM_INPUTS):
-        ticker = st.text_input(f'Ticker {i+1}', '')
-        if ticker:
-            tickers.append(ticker.upper())
-
-    # Dictionary to hold scores and components for each symbol
-    symbol_to_data = {}
-    distress = []
-    grey = []
-    safe = []
-
-    # Calculate Z-Scores
-    if st.button('Calculate Z-Scores'):
-        for symbol in tickers:
-            ticker = yf.Ticker(symbol)
-            zscore, x1, x2, x3, x4, x5 = z_score(ticker)
-            symbol_to_data[symbol] = {
-                'Z-Score': zscore,
-                'X1': x1,
-                'X2': x2,
-                'X3': x3,
-                'X4': x4,
-                'X5': x5
-            }
-
-            # Classify Z-Scores for the styled table
-            if zscore <= 1.8:
-                distress.append(zscore)
-                grey.append(None)
-                safe.append(None)
-            elif 1.8 < zscore <= 2.99:
-                distress.append(None)
-                grey.append(zscore)
-                safe.append(None)
-            else:
-                distress.append(None)
-                grey.append(None)
-                safe.append(zscore)
-
-        # Table 1: X1, X2, X3, X4, X5 (Raw Z-Score Data)
-        df1 = pd.DataFrame.from_dict(symbol_to_data, orient='index')
-        df1.index.name = 'Symbol'
-        df1 = df1.reset_index()
-
-        # Display Table 1 with custom formatter
-        st.write("Raw Z-Score Data:")
-        st.dataframe(df1.style.format(format_score))
-
-        # Table 2: Styled Distress, Grey, Safe Zone table
-        data_dict = {'Symbol': tickers, 'Distress Zone': distress, 'Grey Zone': grey, 'Safe Zone': safe}
-        df2 = pd.DataFrame.from_dict(data_dict)
-
-        # Apply styles to DataFrame
-        styles = [
-            dict(selector='td', props=[('font-size', '10pt'), ('border-style', 'solid'), ('border-width', '1px')]),
-            dict(selector='th.col_heading', props=[('font-size', '11pt'), ('text-align', 'center')]),
-            dict(selector='caption', props=[('text-align', 'center'), ('font-size', '14pt'), ('font-weight', 'bold')])
-        ]
-
-        df_styled = df2.style.pipe(make_pretty).set_caption('Altman Z Score').set_table_styles(styles)
-
-        # Display Table 2
-        st.write("Styled Z-Score Classification:")
-        st.dataframe(df_styled)
-
-elif option == 'Futures Pricing':
-    st.title('Futures Pricing')
-    ticker = st.text_input('Enter the Futures Ticker Symbol (e.g., CL=F):', 'CL=F')
-    start_date = st.date_input('Start Date', value=pd.to_datetime('2014-01-01'))
-    end_date = st.date_input('End Date', value=pd.to_datetime('2024-04-08'))
-    
-    if st.button('Get Data'):
-        data = get_futures_data(ticker, start_date, end_date)
-        st.write(data)
-        
-        # Export to CSV
-        csv_file_name = f'historical_prices_{ticker}.csv'
-        data.to_csv(csv_file_name)
-        st.write(f'Data exported to {csv_file_name}')
-        st.download_button(
-            label="Download CSV",
-            data=data.to_csv().encode('utf-8'),
-            file_name=csv_file_name,
-            mime='text/csv',
-        )
+if st.button('Generate Sankey Diagram'):
+    plot_sankey(ticker)
 
