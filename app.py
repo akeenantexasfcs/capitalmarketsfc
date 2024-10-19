@@ -8,6 +8,7 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
+from datetime import datetime
 
 def get_value_safely(df, key):
     try:
@@ -16,20 +17,21 @@ def get_value_safely(df, key):
         st.warning(f"Unable to retrieve {key}. Using 0 instead.")
         return 0
 
-def plot_sankey(ticker, report_type, year):
+def plot_sankey(ticker, report_type, year, quarter=None):
     try:
         stock = yf.Ticker(ticker)
         
         if report_type == 'Annual':
             financials = stock.financials
+            # Filter for the selected year
+            financials = financials.loc[:, financials.columns.year == year]
         else:  # Quarterly
             financials = stock.quarterly_financials
-        
-        # Filter for the selected year
-        financials = financials.loc[:, financials.columns.year == year]
+            # Filter for the selected year and quarter
+            financials = financials.loc[:, (financials.columns.year == year) & (financials.columns.quarter == quarter)]
         
         if financials.empty:
-            st.error(f"No financial data available for {ticker} in {year}")
+            st.error(f"No financial data available for {ticker} in the selected period")
             return
 
         # Retrieve values safely
@@ -86,8 +88,10 @@ def plot_sankey(ticker, report_type, year):
           ))])
 
         # Update layout for better readability
+        title = f"Financial Breakdown for {ticker} ({report_type} {year}"
+        title += f" Q{quarter}" if report_type == 'Quarterly' else ")"
         fig.update_layout(
-            title_text=f"Financial Breakdown for {ticker} ({report_type} {year})",
+            title_text=title,
             font=dict(size=16, color="black"),
             paper_bgcolor='white',
             plot_bgcolor='white',
@@ -120,10 +124,18 @@ ticker = st.text_input('Enter Stock Ticker (e.g., AAPL, MSFT, GOOGL):', 'AAPL')
 # Select report type
 report_type = st.selectbox('Select Report Type', ['Annual', 'Quarterly'])
 
+# Get current year and quarter
+current_year = datetime.now().year
+current_quarter = (datetime.now().month - 1) // 3 + 1
+
 # Select year
-current_year = pd.Timestamp.now().year
 year = st.selectbox('Select Year', range(current_year, current_year-5, -1))
 
+quarter = None
+if report_type == 'Quarterly':
+    # Select quarter for quarterly reports
+    quarter = st.selectbox('Select Quarter', [1, 2, 3, 4], index=current_quarter-1)
+
 if st.button('Generate Sankey Diagram'):
-    plot_sankey(ticker, report_type, year)
+    plot_sankey(ticker, report_type, year, quarter)
 
