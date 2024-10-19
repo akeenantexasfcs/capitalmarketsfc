@@ -103,56 +103,71 @@ def make_pretty(styler):
 
 # Define a function to generate the Sankey diagram
 def plot_sankey(income_statement):
-    # Prepare labels and values from the income statement
-    label = [
-        f"Revenue ${income_statement['Total Revenue']}",
-        f"Cost of Revenue(-${income_statement['Cost Of Revenue']})",
-        f"Gross Profit ${income_statement['Gross Profit']}",
-        f"Operating Expenses(-${income_statement['Total Operating Expenses']})",
-        f"Operating Profit ${income_statement['Operating Income']}",
-        f"Net Income ${income_statement['Net Income']}",
-    ]
-    
-    source = [0, 2, 2, 4]
-    target = [2, 3, 4, 5]
-    values = [
-        income_statement['Total Revenue'],
-        income_statement['Cost Of Revenue'],
-        income_statement['Total Operating Expenses'],
-        income_statement['Operating Income']
-    ]
-    
-    # Create the Sankey Diagram using Plotly
-    fig = go.Figure(data=[go.Sankey(
-        node=dict(
-            pad=30,
-            thickness=20,
-            line=dict(color="white", width=0),
-            label=label,
-            color=["#49a2eb", "#BC271B", '#519E3F', '#BC271B', '#519E3F', '#519E3F']
-        ),
-        link=dict(
-            source=source,
-            target=target,
-            value=values,
-            color=["#96cded", "#D58A87", "#D58A87", "#A4CC9E"]
-        )
-    )])
+    try:
+        # Validate that all required keys are present in income_statement
+        required_keys = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
+        for key in required_keys:
+            if key not in income_statement or pd.isna(income_statement[key]):
+                st.warning(f'Missing or invalid data for {key}. Defaulting to 0.')
+                income_statement[key] = 0
 
-    # Add title to the diagram
-    fig.update_layout(
-        title={
-            'text': 'Income Statement Sankey Diagram',
-            'y': 0.95, 'x': 0.5,
-            'xanchor': 'center',
-            'yanchor': 'top',
-            'font_size': 30
-        },
-        paper_bgcolor='rgb(248,248,255)',
-        plot_bgcolor='rgb(248,248,255)'
-    )
-    
-    st.plotly_chart(fig)
+        # Convert values to thousands
+        for key in income_statement:
+            income_statement[key] = income_statement[key] / 1000
+
+        # Prepare labels and values from the income statement
+        label = [
+            f"Revenue ${income_statement['Total Revenue']:,.0f}K",
+            f"Cost of Revenue(-${income_statement['Cost Of Revenue']:,.0f}K)",
+            f"Gross Profit ${income_statement['Gross Profit']:,.0f}K",
+            f"Operating Expenses(-${income_statement['Total Operating Expenses']:,.0f}K)",
+            f"Operating Profit ${income_statement['Operating Income']:,.0f}K",
+            f"Net Income ${income_statement['Net Income']:,.0f}K",
+        ]
+        
+        source = [0, 2, 2, 4]
+        target = [2, 3, 4, 5]
+        values = [
+            income_statement['Total Revenue'],
+            income_statement['Cost Of Revenue'],
+            income_statement['Total Operating Expenses'],
+            income_statement['Operating Income']
+        ]
+        
+        # Create the Sankey Diagram using Plotly
+        fig = go.Figure(data=[go.Sankey(
+            node=dict(
+                pad=30,
+                thickness=30,
+                line=dict(color="white", width=0),
+                label=label,
+                color=["#49a2eb", "#BC271B", '#519E3F', '#BC271B', '#519E3F', '#519E3F']
+            ),
+            link=dict(
+                source=source,
+                target=target,
+                value=values,
+                color=["#96cded", "#D58A87", "#D58A87", "#A4CC9E"]
+            )
+        )])
+
+        # Add title to the diagram
+        fig.update_layout(
+            title={
+                'text': 'Income Statement Sankey Diagram',
+                'y': 0.95, 'x': 0.5,
+                'xanchor': 'center',
+                'yanchor': 'top',
+                'font_size': 24
+            },
+            paper_bgcolor='rgb(248,248,255)',
+            plot_bgcolor='rgb(248,248,255)',
+            font=dict(size=14)
+        )
+        
+        st.plotly_chart(fig)
+    except Exception as e:
+        st.error(f"An error occurred while plotting Sankey: {str(e)}")
 
 # Streamlit app
 st.sidebar.title('Navigation')
@@ -180,14 +195,14 @@ if option == 'Sankey Trial':
 
             if not income_data.empty:
                 # Convert the data to more usable format
-                income_statement = {
-                    'Total Revenue': income_data.loc['Total Revenue'].max(),
-                    'Cost Of Revenue': income_data.loc['Cost Of Revenue'].max(),
-                    'Gross Profit': income_data.loc['Gross Profit'].max(),
-                    'Total Operating Expenses': income_data.loc['Total Operating Expenses'].max(),
-                    'Operating Income': income_data.loc['Operating Income'].max(),
-                    'Net Income': income_data.loc['Net Income'].max(),
-                }
+                income_statement = {}
+                columns_needed = ['Total Revenue', 'Cost Of Revenue', 'Gross Profit', 'Total Operating Expenses', 'Operating Income', 'Net Income']
+                for column in columns_needed:
+                    if column in income_data.index:
+                        income_statement[column] = income_data.loc[column].max()
+                    else:
+                        st.warning(f'{column} not found for the selected stock. Defaulting to 0.')
+                        income_statement[column] = 0
                 
                 # Plot Sankey Diagram
                 plot_sankey(income_statement)
