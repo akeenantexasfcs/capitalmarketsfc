@@ -95,10 +95,12 @@ def plot_sankey(ticker, report_type, year):
             height=800
         )
 
-        # Update node label font size and color
+        # Update node properties for better visibility
         fig.update_traces(
             node=dict(
-                label=dict(font=dict(size=14, color="black"))
+                pad=20,
+                thickness=30,
+                line=dict(color="black", width=1),
             ),
             selector=dict(type='sankey')
         )
