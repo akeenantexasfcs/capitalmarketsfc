@@ -5,3 +5,4 @@ numpy
 xlsxwriter
 plotly
 rapidfuzz
+matplotlib
